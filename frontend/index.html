@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>VehicleCare</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+<div id="authScreen" class="auth-screen">
+
+    <div class="auth-card">
+
+        <div class="auth-logo">
+
+            <div class="logo-icon">
+                🚗
+            </div>
+
+            <h1>
+                VehicleCare
+            </h1>
+
+            <p>
+                Vehicle Service Management System
+            </p>
+
+        </div>
+
+        <div
+            id="authMessage"
+            class="auth-message">
+        </div>
+
+        <form id="loginForm">
+
+            <label>
+                Username
+            </label>
+
+            <input
+                type="text"
+                id="loginUsername"
+                placeholder="Enter username"
+                autocomplete="username"
+                required
+            >
+
+            <label>
+                Password
+            </label>
+
+            <input
+                type="password"
+                id="loginPassword"
+                placeholder="Enter password"
+                autocomplete="current-password"
+                required
+            >
+
+            <button
+                type="submit"
+                class="auth-button">
+                Login
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<nav>
+
+    <div class="logo">
+        🚗 VehicleCare
+    </div>
+
+    <div class="nav-links">
+
+        <button onclick="showPage('dashboard')">
+            🏠 Dashboard
+        </button>
+
+        <button onclick="showPage('vehicles')">
+            🚗 Vehicles
+        </button>
+
+        <button onclick="showPage('customers')">
+            👤 Customers
+        </button>
+
+        <button onclick="showPage('services')">
+            🔧 Services
+        </button>
+
+        <button onclick="showPage('appointments')">
+            📅 Appointments
+        </button>
+
+        <button onclick="showPage('invoices')">
+            🧾 Invoices
+        </button>
+
+        <button onclick="showPage('reports')">
+            📊 Reports
+        </button>
+
+        <button
+            class="theme-btn"
+            onclick="toggleTheme()"
+            id="themeButton">
+            ☀️
+        </button>
+
+        <button
+            class="logout-btn"
+            onclick="logout()">
+            🚪 Logout
+        </button>
+
+    </div>
+
+</nav>
+
+
+<main>
+
+
+<section id="dashboard" class="page active">
+
+    <div class="hero">
+
+        <div>
+
+            <span class="badge">
+                VEHICLE SERVICE MANAGEMENT
+            </span>
+
+            <h1>
+                Manage Every
+                <span>Vehicle Smarter.</span>
+            </h1>
+
+            <p>
+                Manage vehicles, customers, service history,
+                appointments, invoices and maintenance records
+                from one powerful dashboard.
+            </p>
+
+            <div class="hero-buttons">
+
+                <button
+                    class="main-btn"
+                    onclick="showPage('vehicles')">
+                    View Vehicles
+                </button>
+
+                <button
+                    class="second-btn"
+                    onclick="showPage('appointments')">
+                    Book Service
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="hero-car">
+            🚘
+        </div>
+
+    </div>
+
+
+    <div class="stats">
+
+        <div class="stat-card">
+            <span>Total Vehicles</span>
+            <strong id="dashVehicles">0</strong>
+        </div>
+
+        <div class="stat-card">
+            <span>Total Services</span>
+            <strong id="dashServices">0</strong>
+        </div>
+
+        <div class="stat-card">
+            <span>Appointments</span>
+            <strong id="dashAppointments">0</strong>
+        </div>
+
+        <div class="stat-card">
+            <span>Total Revenue</span>
+            <strong id="dashRevenue">₹0</strong>
+        </div>
+
+        <div class="stat-card danger-card">
+            <span>Overdue Services</span>
+            <strong id="dashOverdue">0</strong>
+        </div>
+
+        <div class="stat-card warning-card">
+            <span>Upcoming Services</span>
+            <strong id="dashUpcoming">0</strong>
+        </div>
+
+    </div>
+
+
+    <div class="dashboard-grid">
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                <div>
+
+                    <h2>
+                        🔔 Service Alerts
+                    </h2>
+
+                    <p>
+                        Vehicles requiring attention
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div id="serviceAlerts"></div>
+
+        </div>
+
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                <div>
+
+                    <h2>
+                        ⚡ Quick Actions
+                    </h2>
+
+                    <p>
+                        Frequently used operations
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="quick-actions">
+
+                <button onclick="showPage('vehicles')">
+                    🚗 Manage Vehicles
+                </button>
+
+                <button onclick="showPage('customers')">
+                    👤 Add Customer
+                </button>
+
+                <button onclick="showPage('services')">
+                    🔧 Add Service
+                </button>
+
+                <button onclick="showPage('appointments')">
+                    📅 New Appointment
+                </button>
+
+                <button onclick="showPage('invoices')">
+                    🧾 Create Invoice
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section id="vehicles" class="page">
+
+    <div class="page-title">
+
+        <h1>
+            🚗 Vehicles
+        </h1>
+
+        <p>
+            Manage all registered vehicles.
+        </p>
+
+    </div>
+
+
+    <div class="toolbar">
+
+        <input
+            id="vehicleSearch"
+            placeholder="Search vehicle, owner, model or phone..."
+            oninput="searchVehicles()"
+        >
+
+        <select
+            id="vehicleFilter"
+            onchange="filterVehicles()">
+
+            <option value="">
+                All Types
+            </option>
+
+            <option value="Car">
+                Cars
+            </option>
+
+            <option value="Bike">
+                Bikes
+            </option>
+
+            <option value="Truck">
+                Trucks
+            </option>
+
+            <option value="Auto">
+                Autos
+            </option>
+
+        </select>
+
+        <button onclick="showVehicleForm()">
+            + Add Vehicle
+        </button>
+
+        <button onclick="exportVehicles()">
+            📥 Export
+        </button>
+
+    </div>
+
+
+    <div id="vehicleForm"
+        class="form-card hidden">
+
+        <h2>
+            Add Vehicle
+        </h2>
+
+        <div class="form-grid">
+
+            <input
+                id="vehicleNumber"
+                placeholder="Vehicle Number">
+
+            <input
+                id="ownerName"
+                placeholder="Owner Name">
+
+            <input
+                id="model"
+                placeholder="Vehicle Model">
+
+            <select id="type">
+
+                <option value="">
+                    Vehicle Type
+                </option>
+
+                <option value="Car">
+                    Car
+                </option>
+
+                <option value="Bike">
+                    Bike
+                </option>
+
+                <option value="Truck">
+                    Truck
+                </option>
+
+                <option value="Auto">
+                    Auto
+                </option>
+
+            </select>
+
+            <input
+                id="phone"
+                placeholder="Phone Number">
+
+            <label>
+                Last Service
+
+                <input
+                    id="lastServiceDate"
+                    type="date">
+            </label>
+
+            <label>
+                Next Service
+
+                <input
+                    id="nextServiceDate"
+                    type="date">
+            </label>
+
+            <input
+                id="serviceCost"
+                type="number"
+                placeholder="Service Cost">
+
+        </div>
+
+        <div class="form-buttons">
+
+            <button
+                class="main-btn"
+                onclick="addVehicle()">
+                Save Vehicle
+            </button>
+
+            <button onclick="hideVehicleForm()">
+                Cancel
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-box">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Vehicle</th>
+                    <th>Owner</th>
+                    <th>Model</th>
+                    <th>Type</th>
+                    <th>Phone</th>
+                    <th>Next Service</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="vehicleList"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section id="customers" class="page">
+
+    <div class="page-title">
+
+        <h1>
+            👤 Customers
+        </h1>
+
+        <p>
+            Manage customer information.
+        </p>
+
+    </div>
+
+
+    <div class="form-card">
+
+        <h2>
+            Add Customer
+        </h2>
+
+        <div class="form-grid">
+
+            <input
+                id="customerName"
+                placeholder="Customer Name">
+
+            <input
+                id="customerPhone"
+                placeholder="Phone Number">
+
+            <input
+                id="customerEmail"
+                placeholder="Email">
+
+            <input
+                id="customerAddress"
+                placeholder="Address">
+
+        </div>
+
+        <button
+            class="main-btn"
+            onclick="addCustomer()">
+            + Add Customer
+        </button>
+
+    </div>
+
+
+    <div
+        class="customer-grid"
+        id="customerList">
+    </div>
+
+</section>
+
+
+<section id="services" class="page">
+
+    <div class="page-title">
+
+        <h1>
+            🔧 Service Management
+        </h1>
+
+        <p>
+            Record and track vehicle maintenance.
+        </p>
+
+    </div>
+
+
+    <div class="form-card">
+
+        <h2>
+            Record Service
+        </h2>
+
+        <div class="form-grid">
+
+            <select id="serviceVehicle">
+
+                <option value="">
+                    Select Vehicle
+                </option>
+
+            </select>
+
+            <input
+                id="serviceDate"
+                type="date">
+
+            <select id="serviceType">
+
+                <option value="">
+                    Service Type
+                </option>
+
+                <option>
+                    General Service
+                </option>
+
+                <option>
+                    Oil Change
+                </option>
+
+                <option>
+                    Brake Service
+                </option>
+
+                <option>
+                    Engine Service
+                </option>
+
+                <option>
+                    AC Service
+                </option>
+
+                <option>
+                    Full Service
+                </option>
+
+            </select>
+
+            <input
+                id="technician"
+                placeholder="Technician">
+
+            <input
+                id="partsCost"
+                type="number"
+                placeholder="Parts Cost">
+
+            <input
+                id="labourCost"
+                type="number"
+                placeholder="Labour Cost">
+
+            <input
+                id="nextService"
+                type="date">
+
+            <input
+                id="serviceDescription"
+                placeholder="Service Description">
+
+        </div>
+
+        <button
+            class="main-btn"
+            onclick="addService()">
+            Save Service
+        </button>
+
+    </div>
+
+
+    <div class="table-box">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Date</th>
+                    <th>Vehicle</th>
+                    <th>Service</th>
+                    <th>Technician</th>
+                    <th>Parts</th>
+                    <th>Labour</th>
+                    <th>Total</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="serviceList"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section id="appointments" class="page">
+
+    <div class="page-title">
+
+        <h1>
+            📅 Appointments
+        </h1>
+
+        <p>
+            Schedule and manage service appointments.
+        </p>
+
+    </div>
+
+
+    <div class="form-card">
+
+        <h2>
+            New Appointment
+        </h2>
+
+        <div class="form-grid">
+
+            <input
+                id="appointmentCustomer"
+                placeholder="Customer Name">
+
+            <input
+                id="appointmentPhone"
+                placeholder="Phone">
+
+            <input
+                id="appointmentVehicle"
+                placeholder="Vehicle Number">
+
+            <select id="appointmentService">
+
+                <option value="">
+                    Service Type
+                </option>
+
+                <option>
+                    General Service
+                </option>
+
+                <option>
+                    Oil Change
+                </option>
+
+                <option>
+                    Brake Service
+                </option>
+
+                <option>
+                    Engine Service
+                </option>
+
+                <option>
+                    AC Service
+                </option>
+
+            </select>
+
+            <input
+                id="appointmentDate"
+                type="date">
+
+            <input
+                id="appointmentTime"
+                type="time">
+
+        </div>
+
+        <button
+            class="main-btn"
+            onclick="addAppointment()">
+            Book Appointment
+        </button>
+
+    </div>
+
+
+    <div
+        class="appointment-grid"
+        id="appointmentList">
+    </div>
+
+</section>
+
+
+<section id="invoices" class="page">
+
+    <div class="page-title">
+
+        <h1>
+            🧾 Invoices
+        </h1>
+
+        <p>
+            Create and manage service invoices.
+        </p>
+
+    </div>
+
+
+    <div class="form-card">
+
+        <h2>
+            Create Invoice
+        </h2>
+
+        <div class="form-grid">
+
+            <input
+                id="invoiceCustomer"
+                placeholder="Customer Name">
+
+            <input
+                id="invoicePhone"
+                placeholder="Phone">
+
+            <input
+                id="invoiceVehicle"
+                placeholder="Vehicle Number">
+
+            <input
+                id="invoiceModel"
+                placeholder="Vehicle Model">
+
+            <input
+                id="invoiceService"
+                placeholder="Service Type">
+
+            <input
+                id="invoiceDate"
+                type="date">
+
+            <input
+                id="invoiceParts"
+                type="number"
+                placeholder="Parts Cost">
+
+            <input
+                id="invoiceLabour"
+                type="number"
+                placeholder="Labour Cost">
+
+            <input
+                id="invoiceTax"
+                type="number"
+                placeholder="Tax %">
+
+            <input
+                id="invoiceDiscount"
+                type="number"
+                placeholder="Discount">
+
+        </div>
+
+        <button
+            class="main-btn"
+            onclick="createInvoice()">
+            Create Invoice
+        </button>
+
+    </div>
+
+
+    <div class="table-box">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Invoice</th>
+                    <th>Customer</th>
+                    <th>Vehicle</th>
+                    <th>Service</th>
+                    <th>Date</th>
+                    <th>Total</th>
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="invoiceList"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section id="reports" class="page">
+
+    <div class="page-title">
+
+        <h1>
+            📊 Reports & Analytics
+        </h1>
+
+        <p>
+            Overview of VehicleCare operations.
+        </p>
+
+    </div>
+
+
+    <div class="report-grid">
+
+        <div class="report-card">
+
+            <span>
+                Total Vehicles
+            </span>
+
+            <strong id="reportVehicles">
+                0
+            </strong>
+
+        </div>
+
+        <div class="report-card">
+
+            <span>
+                Total Services
+            </span>
+
+            <strong id="reportServices">
+                0
+            </strong>
+
+        </div>
+
+        <div class="report-card">
+
+            <span>
+                Total Revenue
+            </span>
+
+            <strong id="reportRevenue">
+                ₹0
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <h2>
+                    Vehicle Type Distribution
+                </h2>
+
+                <p>
+                    Registered vehicles by category.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="pie-chart-container">
+
+            <canvas id="vehicleChart"></canvas>
+
+        </div>
+
+    </div>
+
+
+    <div class="report-actions">
+
+        <button onclick="exportVehicles()">
+            📥 Export Vehicles
+        </button>
+
+        <button onclick="exportServices()">
+            📥 Export Services
+        </button>
+
+        <button onclick="window.print()">
+            🖨️ Print Report
+        </button>
+
+    </div>
+
+</section>
+
+</main>
+
+
+<div id="toast" class="toast"></div>
+
+
+<footer>
+
+    <p>
+        © 2026 VehicleCare |
+        Vehicle Service Management System
+    </p>
+
+</footer>
+
+
+<script src="script.js"></script>
+
+</body>
+
+</html>
