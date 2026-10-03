@@ -1,463 +1,768 @@
-require("dotenv").config();
-
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const path = require("path");
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+const PORT = 3000;
+
+const MONGO_URI =
+    "mongodb://127.0.0.1:27017/VehicleServiceDB";
 
 const JWT_SECRET =
-    process.env.JWT_SECRET;
+    "vehiclecare_jwt_secret_2026";
 
-const ADMIN_USERNAME =
-    process.env.ADMIN_USERNAME;
+const ADMIN_USERNAME = "anu";
+const ADMIN_PASSWORD = "123456";
 
-const ADMIN_PASSWORD =
-    process.env.ADMIN_PASSWORD;
+const ACCESS_TOKEN_EXPIRES = "15m";
+const REFRESH_TOKEN_EXPIRES = "7d";
 
+
+// =====================================================
+// MIDDLEWARE
+// =====================================================
+
+app.use(cors());
+
+app.use(express.json());
+
+app.use((req, res, next) => {
+    res.setHeader(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+
+    res.setHeader("Pragma", "no-cache");
+
+    res.setHeader("Expires", "0");
+
+    next();
+});
+
+
+// =====================================================
+// MONGODB CONNECTION
+// =====================================================
 
 mongoose
-    .connect(
-        "mongodb://127.0.0.1:27017/VehicleServiceDB"
-    )
+    .connect(MONGO_URI)
     .then(() => {
-
-        console.log(
-            "MongoDB Connected"
-        );
-
+        console.log("MongoDB connected to VehicleServiceDB");
     })
-    .catch(error => {
-
-        console.error(
-            "MongoDB connection error:",
-            error
-        );
-
+    .catch((error) => {
+        console.error("MongoDB connection error:", error);
     });
 
 
-const vehicleSchema =
-    new mongoose.Schema({
+// =====================================================
+// SCHEMAS
+// =====================================================
 
-        vehicleNumber: String,
+
+// ---------------- USER ----------------
+
+const userSchema = new mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+
+        username: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true
+        },
+
+        email: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true,
+            lowercase: true
+        },
+
+        password: {
+            type: String,
+            required: true
+        }
+    },
+    {
+        timestamps: true
+    }
+);
+
+const User = mongoose.model("User", userSchema);
+
+
+// ---------------- VEHICLE ----------------
+
+const vehicleSchema = new mongoose.Schema(
+    {
+        vehicleNumber: {
+            type: String,
+            required: true
+        },
+
+        vehicleName: String,
+
         ownerName: String,
-        model: String,
+
         type: String,
-        phone: String,
-        lastServiceDate: String,
-        nextServiceDate: String,
-        serviceCost: Number
 
-    });
-
-
-const customerSchema =
-    new mongoose.Schema({
-
-        name: String,
-        phone: String,
-        email: String,
-        address: String
-
-    });
-
-
-const serviceSchema =
-    new mongoose.Schema({
-
-        vehicleId: String,
-        vehicleNumber: String,
-        serviceDate: String,
-        serviceType: String,
-        description: String,
-        technician: String,
-        partsCost: Number,
-        labourCost: Number,
-        totalCost: Number,
-        nextServiceDate: String
-
-    });
-
-
-const appointmentSchema =
-    new mongoose.Schema({
-
-        customerName: String,
-        phone: String,
-        vehicleNumber: String,
-        serviceType: String,
-        appointmentDate: String,
-        appointmentTime: String,
-        status: String
-
-    });
-
-
-const invoiceSchema =
-    new mongoose.Schema({
-
-        invoiceNumber: String,
-        customerName: String,
-        phone: String,
-        vehicleNumber: String,
         model: String,
-        serviceType: String,
-        serviceDate: String,
-        partsCost: Number,
-        labourCost: Number,
-        tax: Number,
-        discount: Number,
-        total: Number
 
-    });
+        year: Number,
 
+        status: {
+            type: String,
+            default: "Active"
+        },
 
-const Vehicle =
-    mongoose.model(
-        "Vehicle",
-        vehicleSchema
-    );
+        lastService: String,
 
+        nextService: String
+    },
+    {
+        timestamps: true
+    }
+);
 
-const Customer =
-    mongoose.model(
-        "Customer",
-        customerSchema
-    );
+const Vehicle = mongoose.model("Vehicle", vehicleSchema);
 
 
-const Service =
-    mongoose.model(
-        "Service",
-        serviceSchema
-    );
+// ---------------- CUSTOMER ----------------
 
+const customerSchema = new mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: true
+        },
+
+        phone: String,
+
+        email: String,
+
+        address: String
+    },
+    {
+        timestamps: true
+    }
+);
+
+const Customer = mongoose.model("Customer", customerSchema);
+
+
+// ---------------- SERVICE ----------------
+
+const serviceSchema = new mongoose.Schema(
+    {
+        serviceName: {
+            type: String,
+            required: true
+        },
+
+        description: String,
+
+        price: Number,
+
+        duration: String
+    },
+    {
+        timestamps: true
+    }
+);
+
+const Service = mongoose.model("Service", serviceSchema);
+
+
+// ---------------- APPOINTMENT ----------------
+
+const appointmentSchema = new mongoose.Schema(
+    {
+        customerName: String,
+
+        vehicleNumber: String,
+
+        service: String,
+
+        date: String,
+
+        time: String,
+
+        status: {
+            type: String,
+            default: "Pending"
+        },
+
+        notes: String
+    },
+    {
+        timestamps: true
+    }
+);
 
 const Appointment =
-    mongoose.model(
-        "Appointment",
-        appointmentSchema
-    );
+    mongoose.model("Appointment", appointmentSchema);
 
+
+// ---------------- INVOICE ----------------
+
+const invoiceSchema = new mongoose.Schema(
+    {
+        invoiceNumber: String,
+
+        customerName: String,
+
+        vehicleNumber: String,
+
+        service: String,
+
+        amount: Number,
+
+        date: String,
+
+        status: {
+            type: String,
+            default: "Pending"
+        }
+    },
+    {
+        timestamps: true
+    }
+);
 
 const Invoice =
-    mongoose.model(
-        "Invoice",
-        invoiceSchema
-    );
+    mongoose.model("Invoice", invoiceSchema);
 
 
-function generateAccessToken(
-    username,
-    role
-) {
+// =====================================================
+// JWT FUNCTIONS
+// =====================================================
 
+function createAccessToken(user) {
     return jwt.sign(
         {
-            username,
-            role,
-            token_type: "access"
+            username: user.username,
+            name: user.name,
+            email: user.email
         },
-
         JWT_SECRET,
-
         {
-            expiresIn: "15m"
+            expiresIn: ACCESS_TOKEN_EXPIRES
         }
     );
 }
 
 
-function generateRefreshToken(
-    username,
-    role
-) {
-
+function createRefreshToken(user) {
     return jwt.sign(
         {
-            username,
-            role,
-            token_type: "refresh"
+            username: user.username,
+            name: user.name,
+            email: user.email
         },
-
         JWT_SECRET,
-
         {
-            expiresIn: "7d"
+            expiresIn: REFRESH_TOKEN_EXPIRES
         }
     );
 }
 
 
-function authenticateToken(
-    req,
-    res,
-    next
-) {
+// =====================================================
+// AUTH MIDDLEWARE
+// =====================================================
+
+function authenticateToken(req, res, next) {
 
     const authHeader =
         req.headers.authorization;
 
-
     if (!authHeader) {
-
         return res.status(401).json({
-
-            message:
-                "Authentication required"
-
+            message: "Authentication required"
         });
-
     }
-
 
     const parts =
         authHeader.split(" ");
-
 
     if (
         parts.length !== 2 ||
         parts[0] !== "Bearer"
     ) {
-
         return res.status(401).json({
-
-            message:
-                "Invalid authorization format"
-
+            message: "Invalid authorization format"
         });
-
     }
 
-
-    const token =
-        parts[1];
-
+    const token = parts[1];
 
     try {
 
         const decoded =
-            jwt.verify(
-                token,
-                JWT_SECRET
-            );
+            jwt.verify(token, JWT_SECRET);
+
+        req.user = decoded;
+
+        next();
+
+    } catch (error) {
+
+        return res.status(401).json({
+            message: "Invalid or expired token"
+        });
+    }
+}
 
 
-        if (
-            decoded.token_type !==
-            "access"
-        ) {
+// =====================================================
+// ROOT
+// =====================================================
 
-            return res.status(401).json({
+app.get("/", (req, res) => {
 
+    res.send(
+        "VehicleCare Server is Running"
+    );
+
+});
+
+
+// =====================================================
+// HEALTH
+// =====================================================
+
+app.get("/api/health", (req, res) => {
+
+    res.json({
+        status: "OK",
+        message: "VehicleCare API is running"
+    });
+
+});
+
+
+// =====================================================
+// AUTH - LOGIN
+// =====================================================
+
+app.post("/api/auth/login", async (req, res) => {
+
+    try {
+
+        const {
+            username,
+            password
+        } = req.body;
+
+
+        if (!username || !password) {
+
+            return res.status(400).json({
                 message:
-                    "Invalid access token"
-
+                    "Username and password are required"
             });
 
         }
 
 
-        req.user =
-            decoded;
+        // ---------------- ADMIN LOGIN ----------------
 
+        if (
+            username === ADMIN_USERNAME &&
+            password === ADMIN_PASSWORD
+        ) {
 
-        next();
+            const user = {
 
+                username: ADMIN_USERNAME,
 
-    } catch {
+                name: "Anvitha Shetty",
 
-        return res.status(401).json({
+                email: "admin@vehiclecare.com"
 
-            message:
-                "Access token expired or invalid"
-
-        });
-
-    }
-}
-
-
-app.post(
-    "/api/auth/login",
-    async (req, res) => {
-
-        try {
-
-            const {
-                username,
-                password
-            } = req.body;
-
-
-            if (
-                username !==
-                ADMIN_USERNAME
-            ) {
-
-                return res.status(401).json({
-
-                    message:
-                        "Invalid username or password"
-
-                });
-
-            }
-
-
-            const hashedPassword =
-                await bcrypt.hash(
-                    ADMIN_PASSWORD,
-                    10
-                );
-
-
-            const validPassword =
-                await bcrypt.compare(
-                    password,
-                    hashedPassword
-                );
-
-
-            if (!validPassword) {
-
-                return res.status(401).json({
-
-                    message:
-                        "Invalid username or password"
-
-                });
-
-            }
+            };
 
 
             const accessToken =
-                generateAccessToken(
-                    ADMIN_USERNAME,
-                    "admin"
-                );
-
+                createAccessToken(user);
 
             const refreshToken =
-                generateRefreshToken(
-                    ADMIN_USERNAME,
-                    "admin"
-                );
+                createRefreshToken(user);
 
 
-            res.json({
+            return res.json({
 
-                message:
-                    "Login successful",
+                message: "Login successful",
 
                 accessToken,
 
                 refreshToken,
 
-                username:
-                    ADMIN_USERNAME,
-
-                role:
-                    "admin"
-
-            });
-
-
-        } catch {
-
-            res.status(500).json({
-
-                message:
-                    "Login failed"
+                user
 
             });
 
         }
 
-    }
-);
 
+        // ---------------- NORMAL USER LOGIN ----------------
 
-app.post(
-    "/api/auth/refresh",
-    (req, res) => {
-
-        try {
-
-            const {
-                refreshToken
-            } = req.body;
-
-
-            if (!refreshToken) {
-
-                return res.status(401).json({
-
-                    message:
-                        "Refresh token required"
-
-                });
-
-            }
-
-
-            const decoded =
-                jwt.verify(
-                    refreshToken,
-                    JWT_SECRET
-                );
-
-
-            if (
-                decoded.token_type !==
-                "refresh"
-            ) {
-
-                return res.status(401).json({
-
-                    message:
-                        "Invalid refresh token"
-
-                });
-
-            }
-
-
-            const accessToken =
-                generateAccessToken(
-                    decoded.username,
-                    decoded.role
-                );
-
-
-            res.json({
-
-                accessToken
-
+        const user =
+            await User.findOne({
+                username: username
             });
 
 
-        } catch {
+        if (!user) {
 
-            res.status(401).json({
+            return res.status(401).json({
+                message:
+                    "Invalid username or password"
+            });
+
+        }
+
+
+        if (user.password !== password) {
+
+            return res.status(401).json({
+                message:
+                    "Invalid username or password"
+            });
+
+        }
+
+
+        const userData = {
+
+            username: user.username,
+
+            name: user.name,
+
+            email: user.email
+
+        };
+
+
+        const accessToken =
+            createAccessToken(userData);
+
+        const refreshToken =
+            createRefreshToken(userData);
+
+
+        res.json({
+
+            message: "Login successful",
+
+            accessToken,
+
+            refreshToken,
+
+            user: userData
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Login error:",
+            error
+        );
+
+        res.status(500).json({
+            message: "Server error during login"
+        });
+
+    }
+
+});
+
+
+// =====================================================
+// AUTH - SIGNUP
+// =====================================================
+
+app.post("/api/auth/signup", async (req, res) => {
+
+    try {
+
+        const {
+            name,
+            username,
+            email,
+            password
+        } = req.body;
+
+
+        // ---------------- VALIDATION ----------------
+
+        if (
+            !name ||
+            !username ||
+            !email ||
+            !password
+        ) {
+
+            return res.status(400).json({
 
                 message:
-                    "Refresh token expired or invalid"
+                    "All fields are required."
 
             });
 
         }
 
-    }
-);
 
+        // ---------------- USERNAME FORMAT ----------------
+
+        const cleanUsername =
+            username.trim();
+
+
+        if (cleanUsername.length < 3) {
+
+            return res.status(400).json({
+
+                message:
+                    "Username must contain at least 3 characters."
+
+            });
+
+        }
+
+
+        // ---------------- PASSWORD ----------------
+
+        if (password.length < 6) {
+
+            return res.status(400).json({
+
+                message:
+                    "Password must contain at least 6 characters."
+
+            });
+
+        }
+
+
+        // ---------------- ADMIN USERNAME ----------------
+
+        if (
+            cleanUsername.toLowerCase() ===
+            ADMIN_USERNAME.toLowerCase()
+        ) {
+
+            return res.status(400).json({
+
+                message:
+                    "This username is reserved."
+
+            });
+
+        }
+
+
+        // ---------------- CHECK USERNAME ----------------
+
+        const existingUsername =
+            await User.findOne({
+                username: cleanUsername
+            });
+
+
+        if (existingUsername) {
+
+            return res.status(409).json({
+
+                message:
+                    "Username already exists."
+
+            });
+
+        }
+
+
+        // ---------------- CHECK EMAIL ----------------
+
+        const cleanEmail =
+            email.trim().toLowerCase();
+
+
+        const existingEmail =
+            await User.findOne({
+                email: cleanEmail
+            });
+
+
+        if (existingEmail) {
+
+            return res.status(409).json({
+
+                message:
+                    "Email already registered."
+
+            });
+
+        }
+
+
+        // ---------------- CREATE USER ----------------
+
+        const user =
+            new User({
+
+                name: name.trim(),
+
+                username: cleanUsername,
+
+                email: cleanEmail,
+
+                password: password
+
+            });
+
+
+        await user.save();
+
+
+        // ---------------- SUCCESS ----------------
+
+        res.status(201).json({
+
+            message:
+                "Account created successfully.",
+
+            user: {
+
+                name: user.name,
+
+                username: user.username,
+
+                email: user.email
+
+            }
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Signup error:",
+            error
+        );
+
+
+        // MongoDB duplicate key
+
+        if (error.code === 11000) {
+
+            return res.status(409).json({
+
+                message:
+                    "Username or email already exists."
+
+            });
+
+        }
+
+
+        res.status(500).json({
+
+            message:
+                "Server error during signup."
+
+        });
+
+    }
+
+});
+
+
+// =====================================================
+// AUTH - REFRESH TOKEN
+// =====================================================
+
+app.post("/api/auth/refresh", (req, res) => {
+
+    try {
+
+        const {
+            refreshToken
+        } = req.body;
+
+
+        if (!refreshToken) {
+
+            return res.status(401).json({
+
+                message:
+                    "Refresh token required"
+
+            });
+
+        }
+
+
+        const decoded =
+            jwt.verify(
+                refreshToken,
+                JWT_SECRET
+            );
+
+
+        const user = {
+
+            username: decoded.username,
+
+            name: decoded.name,
+
+            email: decoded.email
+
+        };
+
+
+        const accessToken =
+            createAccessToken(user);
+
+
+        res.json({
+
+            accessToken
+
+        });
+
+    }
+
+    catch (error) {
+
+        res.status(401).json({
+
+            message:
+                "Invalid or expired refresh token"
+
+        });
+
+    }
+
+});
+
+
+// =====================================================
+// AUTH - CURRENT USER
+// =====================================================
 
 app.get(
     "/api/auth/me",
@@ -466,17 +771,28 @@ app.get(
 
         res.json({
 
-            username:
-                req.user.username,
+            user: {
 
-            role:
-                req.user.role
+                username:
+                    req.user.username,
+
+                name:
+                    req.user.name,
+
+                email:
+                    req.user.email
+
+            }
 
         });
 
     }
 );
 
+
+// =====================================================
+// DASHBOARD
+// =====================================================
 
 app.get(
     "/api/dashboard",
@@ -485,125 +801,54 @@ app.get(
 
         try {
 
-            const totalVehicles =
-                await Vehicle.countDocuments();
+            const [
+                vehicles,
+                customers,
+                services,
+                appointments,
+                invoices
+            ] = await Promise.all([
 
+                Vehicle.countDocuments(),
 
-            const totalServices =
-                await Service.countDocuments();
+                Customer.countDocuments(),
 
+                Service.countDocuments(),
 
-            const totalAppointments =
-                await Appointment.countDocuments();
+                Appointment.countDocuments(),
 
+                Invoice.countDocuments()
 
-            const invoices =
-                await Invoice.find();
-
-
-            const totalRevenue =
-                invoices.reduce(
-                    (sum, invoice) =>
-                        sum +
-                        Number(
-                            invoice.total || 0
-                        ),
-                    0
-                );
-
-
-            const vehicles =
-                await Vehicle.find();
-
-
-            const today =
-                new Date();
-
-
-            let overdue = 0;
-
-            let upcoming = 0;
-
-
-            vehicles.forEach(
-                vehicle => {
-
-                    if (
-                        !vehicle.nextServiceDate
-                    ) {
-
-                        return;
-
-                    }
-
-
-                    const serviceDate =
-                        new Date(
-                            vehicle.nextServiceDate
-                        );
-
-
-                    if (
-                        serviceDate <
-                        today
-                    ) {
-
-                        overdue++;
-
-                    } else {
-
-                        const difference =
-                            serviceDate -
-                            today;
-
-
-                        const days =
-                            difference /
-                            (
-                                1000 *
-                                60 *
-                                60 *
-                                24
-                            );
-
-
-                        if (
-                            days <= 30
-                        ) {
-
-                            upcoming++;
-
-                        }
-
-                    }
-
-                }
-            );
+            ]);
 
 
             res.json({
 
-                totalVehicles,
+                vehicles,
 
-                totalServices,
+                customers,
 
-                totalAppointments,
+                services,
 
-                totalRevenue,
+                appointments,
 
-                overdue,
-
-                upcoming
+                invoices
 
             });
 
+        }
 
-        } catch {
+        catch (error) {
+
+            console.error(
+                "Dashboard error:",
+                error
+            );
 
             res.status(500).json({
 
                 message:
-                    "Dashboard failed"
+                    "Failed to load dashboard"
 
             });
 
@@ -612,6 +857,12 @@ app.get(
     }
 );
 
+
+// =====================================================
+// VEHICLES
+// =====================================================
+
+// GET VEHICLES
 
 app.get(
     "/api/vehicles",
@@ -621,20 +872,26 @@ app.get(
         try {
 
             const vehicles =
-                await Vehicle.find();
+                await Vehicle.find()
+                    .sort({
+                        createdAt: -1
+                    });
 
+            res.json(vehicles);
 
-            res.json(
-                vehicles
+        }
+
+        catch (error) {
+
+            console.error(
+                "Vehicles error:",
+                error
             );
-
-
-        } catch {
 
             res.status(500).json({
 
                 message:
-                    "Failed to fetch vehicles"
+                    "Failed to load vehicles"
 
             });
 
@@ -643,6 +900,8 @@ app.get(
     }
 );
 
+
+// ADD VEHICLE
 
 app.post(
     "/api/vehicles",
@@ -652,20 +911,20 @@ app.post(
         try {
 
             const vehicle =
-                new Vehicle(
-                    req.body
-                );
-
+                new Vehicle(req.body);
 
             await vehicle.save();
 
+            res.status(201).json(vehicle);
 
-            res.status(201).json(
-                vehicle
+        }
+
+        catch (error) {
+
+            console.error(
+                "Add vehicle error:",
+                error
             );
-
-
-        } catch {
 
             res.status(500).json({
 
@@ -680,42 +939,7 @@ app.post(
 );
 
 
-app.put(
-    "/api/vehicles/:id",
-    authenticateToken,
-    async (req, res) => {
-
-        try {
-
-            const vehicle =
-                await Vehicle.findByIdAndUpdate(
-                    req.params.id,
-                    req.body,
-                    {
-                        new: true
-                    }
-                );
-
-
-            res.json(
-                vehicle
-            );
-
-
-        } catch {
-
-            res.status(500).json({
-
-                message:
-                    "Failed to update vehicle"
-
-            });
-
-        }
-
-    }
-);
-
+// DELETE VEHICLE
 
 app.delete(
     "/api/vehicles/:id",
@@ -728,16 +952,21 @@ app.delete(
                 req.params.id
             );
 
-
             res.json({
 
                 message:
-                    "Vehicle deleted"
+                    "Vehicle deleted successfully"
 
             });
 
+        }
 
-        } catch {
+        catch (error) {
+
+            console.error(
+                "Delete vehicle error:",
+                error
+            );
 
             res.status(500).json({
 
@@ -752,72 +981,11 @@ app.delete(
 );
 
 
-app.get(
-    "/api/services",
-    authenticateToken,
-    async (req, res) => {
+// =====================================================
+// CUSTOMERS
+// =====================================================
 
-        try {
-
-            const services =
-                await Service.find();
-
-
-            res.json(
-                services
-            );
-
-
-        } catch {
-
-            res.status(500).json({
-
-                message:
-                    "Failed to fetch services"
-
-            });
-
-        }
-
-    }
-);
-
-
-app.post(
-    "/api/services",
-    authenticateToken,
-    async (req, res) => {
-
-        try {
-
-            const service =
-                new Service(
-                    req.body
-                );
-
-
-            await service.save();
-
-
-            res.status(201).json(
-                service
-            );
-
-
-        } catch {
-
-            res.status(500).json({
-
-                message:
-                    "Failed to add service"
-
-            });
-
-        }
-
-    }
-);
-
+// GET CUSTOMERS
 
 app.get(
     "/api/customers",
@@ -827,20 +995,21 @@ app.get(
         try {
 
             const customers =
-                await Customer.find();
+                await Customer.find()
+                    .sort({
+                        createdAt: -1
+                    });
 
+            res.json(customers);
 
-            res.json(
-                customers
-            );
+        }
 
-
-        } catch {
+        catch (error) {
 
             res.status(500).json({
 
                 message:
-                    "Failed to fetch customers"
+                    "Failed to load customers"
 
             });
 
@@ -850,6 +1019,8 @@ app.get(
 );
 
 
+// ADD CUSTOMER
+
 app.post(
     "/api/customers",
     authenticateToken,
@@ -858,20 +1029,15 @@ app.post(
         try {
 
             const customer =
-                new Customer(
-                    req.body
-                );
-
+                new Customer(req.body);
 
             await customer.save();
 
+            res.status(201).json(customer);
 
-            res.status(201).json(
-                customer
-            );
+        }
 
-
-        } catch {
+        catch (error) {
 
             res.status(500).json({
 
@@ -886,6 +1052,8 @@ app.post(
 );
 
 
+// DELETE CUSTOMER
+
 app.delete(
     "/api/customers/:id",
     authenticateToken,
@@ -897,16 +1065,16 @@ app.delete(
                 req.params.id
             );
 
-
             res.json({
 
                 message:
-                    "Customer deleted"
+                    "Customer deleted successfully"
 
             });
 
+        }
 
-        } catch {
+        catch (error) {
 
             res.status(500).json({
 
@@ -921,28 +1089,35 @@ app.delete(
 );
 
 
+// =====================================================
+// SERVICES
+// =====================================================
+
+// GET SERVICES
+
 app.get(
-    "/api/appointments",
+    "/api/services",
     authenticateToken,
     async (req, res) => {
 
         try {
 
-            const appointments =
-                await Appointment.find();
+            const services =
+                await Service.find()
+                    .sort({
+                        createdAt: -1
+                    });
 
+            res.json(services);
 
-            res.json(
-                appointments
-            );
+        }
 
-
-        } catch {
+        catch (error) {
 
             res.status(500).json({
 
                 message:
-                    "Failed to fetch appointments"
+                    "Failed to load services"
 
             });
 
@@ -952,6 +1127,116 @@ app.get(
 );
 
 
+// ADD SERVICE
+
+app.post(
+    "/api/services",
+    authenticateToken,
+    async (req, res) => {
+
+        try {
+
+            const service =
+                new Service(req.body);
+
+            await service.save();
+
+            res.status(201).json(service);
+
+        }
+
+        catch (error) {
+
+            res.status(500).json({
+
+                message:
+                    "Failed to add service"
+
+            });
+
+        }
+
+    }
+);
+
+
+// DELETE SERVICE
+
+app.delete(
+    "/api/services/:id",
+    authenticateToken,
+    async (req, res) => {
+
+        try {
+
+            await Service.findByIdAndDelete(
+                req.params.id
+            );
+
+            res.json({
+
+                message:
+                    "Service deleted successfully"
+
+            });
+
+        }
+
+        catch (error) {
+
+            res.status(500).json({
+
+                message:
+                    "Failed to delete service"
+
+            });
+
+        }
+
+    }
+);
+
+
+// =====================================================
+// APPOINTMENTS
+// =====================================================
+
+// GET APPOINTMENTS
+
+app.get(
+    "/api/appointments",
+    authenticateToken,
+    async (req, res) => {
+
+        try {
+
+            const appointments =
+                await Appointment.find()
+                    .sort({
+                        createdAt: -1
+                    });
+
+            res.json(appointments);
+
+        }
+
+        catch (error) {
+
+            res.status(500).json({
+
+                message:
+                    "Failed to load appointments"
+
+            });
+
+        }
+
+    }
+);
+
+
+// ADD APPOINTMENT
+
 app.post(
     "/api/appointments",
     authenticateToken,
@@ -960,20 +1245,17 @@ app.post(
         try {
 
             const appointment =
-                new Appointment(
-                    req.body
-                );
-
+                new Appointment(req.body);
 
             await appointment.save();
-
 
             res.status(201).json(
                 appointment
             );
 
+        }
 
-        } catch {
+        catch (error) {
 
             res.status(500).json({
 
@@ -988,6 +1270,8 @@ app.post(
 );
 
 
+// UPDATE APPOINTMENT
+
 app.put(
     "/api/appointments/:id",
     authenticateToken,
@@ -997,20 +1281,23 @@ app.put(
 
             const appointment =
                 await Appointment.findByIdAndUpdate(
+
                     req.params.id,
+
                     req.body,
+
                     {
                         new: true
                     }
+
                 );
 
 
-            res.json(
-                appointment
-            );
+            res.json(appointment);
 
+        }
 
-        } catch {
+        catch (error) {
 
             res.status(500).json({
 
@@ -1025,6 +1312,8 @@ app.put(
 );
 
 
+// DELETE APPOINTMENT
+
 app.delete(
     "/api/appointments/:id",
     authenticateToken,
@@ -1036,16 +1325,16 @@ app.delete(
                 req.params.id
             );
 
-
             res.json({
 
                 message:
-                    "Appointment deleted"
+                    "Appointment deleted successfully"
 
             });
 
+        }
 
-        } catch {
+        catch (error) {
 
             res.status(500).json({
 
@@ -1060,6 +1349,12 @@ app.delete(
 );
 
 
+// =====================================================
+// INVOICES
+// =====================================================
+
+// GET INVOICES
+
 app.get(
     "/api/invoices",
     authenticateToken,
@@ -1068,20 +1363,21 @@ app.get(
         try {
 
             const invoices =
-                await Invoice.find();
+                await Invoice.find()
+                    .sort({
+                        createdAt: -1
+                    });
 
+            res.json(invoices);
 
-            res.json(
-                invoices
-            );
+        }
 
-
-        } catch {
+        catch (error) {
 
             res.status(500).json({
 
                 message:
-                    "Failed to fetch invoices"
+                    "Failed to load invoices"
 
             });
 
@@ -1090,6 +1386,8 @@ app.get(
     }
 );
 
+
+// ADD INVOICE
 
 app.post(
     "/api/invoices",
@@ -1099,25 +1397,20 @@ app.post(
         try {
 
             const invoice =
-                new Invoice(
-                    req.body
-                );
-
+                new Invoice(req.body);
 
             await invoice.save();
 
+            res.status(201).json(invoice);
 
-            res.status(201).json(
-                invoice
-            );
+        }
 
-
-        } catch {
+        catch (error) {
 
             res.status(500).json({
 
                 message:
-                    "Failed to create invoice"
+                    "Failed to add invoice"
 
             });
 
@@ -1127,41 +1420,51 @@ app.post(
 );
 
 
-app.use(
-    express.static(
-        path.join(
-            __dirname,
-            "..",
-            "frontend"
-        )
-    )
-);
+// DELETE INVOICE
 
+app.delete(
+    "/api/invoices/:id",
+    authenticateToken,
+    async (req, res) => {
 
-app.get(
-    "/{*splat}",
-    (req, res) => {
+        try {
 
-        res.sendFile(
-            path.join(
-                __dirname,
-                "..",
-                "frontend",
-                "index.html"
-            )
-        );
+            await Invoice.findByIdAndDelete(
+                req.params.id
+            );
 
-    }
-);
+            res.json({
 
+                message:
+                    "Invoice deleted successfully"
 
-app.listen(
-    3000,
-    () => {
+            });
 
-        console.log(
-            "Server running at http://localhost:3000"
-        );
+        }
+
+        catch (error) {
+
+            res.status(500).json({
+
+                message:
+                    "Failed to delete invoice"
+
+            });
+
+        }
 
     }
 );
+
+
+// =====================================================
+// START SERVER
+// =====================================================
+
+app.listen(PORT, () => {
+
+    console.log(
+        `VehicleCare server running on http://localhost:${PORT}`
+    );
+
+});

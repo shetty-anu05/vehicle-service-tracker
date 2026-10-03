@@ -1,4 +1,4 @@
-const API = "/api";
+const API = "http://localhost:3000/api";
 
 let accessToken =
     localStorage.getItem("vehiclecare-access-token");
@@ -14,6 +14,10 @@ let invoices = [];
 let vehicleChart = null;
 
 
+/* =====================================================
+   AUTHENTICATION
+===================================================== */
+
 async function refreshAccessToken() {
 
     if (!refreshToken) {
@@ -22,32 +26,28 @@ async function refreshAccessToken() {
 
     try {
 
-        const response =
-            await fetch(
-                `${API}/auth/refresh`,
-                {
-                    method: "POST",
+        const response = await fetch(
+            `${API}/auth/refresh`,
+            {
+                method: "POST",
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                headers: {
+                    "Content-Type": "application/json"
+                },
 
-                    body: JSON.stringify({
-                        refreshToken
-                    })
-                }
-            );
+                body: JSON.stringify({
+                    refreshToken
+                })
+            }
+        );
 
         if (!response.ok) {
             return false;
         }
 
-        const data =
-            await response.json();
+        const data = await response.json();
 
-        accessToken =
-            data.accessToken;
+        accessToken = data.accessToken;
 
         localStorage.setItem(
             "vehiclecare-access-token",
@@ -56,7 +56,12 @@ async function refreshAccessToken() {
 
         return true;
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Refresh token error:",
+            error
+        );
 
         return false;
     }
@@ -79,14 +84,13 @@ async function apiFetch(
             `Bearer ${accessToken}`;
     }
 
-    const response =
-        await fetch(
-            url,
-            {
-                ...options,
-                headers
-            }
-        );
+    const response = await fetch(
+        url,
+        {
+            ...options,
+            headers
+        }
+    );
 
     if (
         response.status === 401 &&
@@ -116,6 +120,10 @@ async function apiFetch(
 }
 
 
+/* =====================================================
+   LOGIN
+===================================================== */
+
 async function login(event) {
 
     event.preventDefault();
@@ -136,7 +144,20 @@ async function login(event) {
             "authMessage"
         );
 
-    message.classList.remove("show");
+    message.classList.remove(
+        "show",
+        "info"
+    );
+
+    if (!username || !password) {
+
+        message.textContent =
+            "Please enter username and password.";
+
+        message.classList.add("show");
+
+        return;
+    }
 
     try {
 
@@ -206,6 +227,7 @@ async function login(event) {
 
         await loadVehicles();
         await loadCustomers();
+        await loadServices();
         await loadAppointments();
         await loadInvoices();
 
@@ -213,7 +235,12 @@ async function login(event) {
             "Login successful"
         );
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Login error:",
+            error
+        );
 
         message.textContent =
             "Unable to connect to server";
@@ -223,7 +250,223 @@ async function login(event) {
 }
 
 
-function logout(showMessage = true) {
+/* =====================================================
+   SIGNUP
+===================================================== */
+
+async function handleSignup(event) {
+
+    event.preventDefault();
+
+    const name =
+        document
+            .getElementById("signupName")
+            ?.value
+            .trim();
+
+    const username =
+        document
+            .getElementById("signupUsername")
+            ?.value
+            .trim();
+
+    const email =
+        document
+            .getElementById("signupEmail")
+            ?.value
+            .trim();
+
+    const password =
+        document
+            .getElementById("signupPassword")
+            ?.value;
+
+
+    /* ---------------------------------------------
+       VALIDATION
+    --------------------------------------------- */
+
+    if (
+        !name ||
+        !username ||
+        !email ||
+        !password
+    ) {
+
+        showAuthInfo(
+            "Please fill in all fields."
+        );
+
+        return;
+    }
+
+
+    if (username.length < 3) {
+
+        showAuthInfo(
+            "Username must be at least 3 characters."
+        );
+
+        return;
+    }
+
+
+    if (password.length < 6) {
+
+        showAuthInfo(
+            "Password must be at least 6 characters."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/auth/signup`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        name,
+
+                        username,
+
+                        email,
+
+                        password
+
+                    })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        /* ---------------------------------------------
+           SIGNUP FAILED
+        --------------------------------------------- */
+
+        if (!response.ok) {
+
+            showAuthInfo(
+                data.message ||
+                "Signup failed."
+            );
+
+            return;
+        }
+
+
+        /* ---------------------------------------------
+           ACCOUNT CREATED
+        --------------------------------------------- */
+
+        switchAuth("login");
+
+
+        /*
+         * Put the username entered by the user
+         * into the login username field.
+         */
+
+        const loginUsername =
+            document.getElementById(
+                "loginUsername"
+            );
+
+        if (loginUsername) {
+
+            loginUsername.value =
+                username;
+        }
+
+
+        showAuthInfo(
+            `Account created successfully! You can now login with "${username}".`
+        );
+
+
+        /* ---------------------------------------------
+           CLEAR SIGNUP FIELDS
+        --------------------------------------------- */
+
+        const signupName =
+            document.getElementById(
+                "signupName"
+            );
+
+        const signupUsername =
+            document.getElementById(
+                "signupUsername"
+            );
+
+        const signupEmail =
+            document.getElementById(
+                "signupEmail"
+            );
+
+        const signupPassword =
+            document.getElementById(
+                "signupPassword"
+            );
+
+
+        if (signupName) {
+
+            signupName.value = "";
+        }
+
+
+        if (signupUsername) {
+
+            signupUsername.value = "";
+        }
+
+
+        if (signupEmail) {
+
+            signupEmail.value = "";
+        }
+
+
+        if (signupPassword) {
+
+            signupPassword.value = "";
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Signup error:",
+            error
+        );
+
+        showAuthInfo(
+            "Unable to connect to server."
+        );
+    }
+}
+
+
+/* =====================================================
+   LOGOUT
+===================================================== */
+
+function logout(
+    showMessage = true
+) {
 
     accessToken = null;
     refreshToken = null;
@@ -240,17 +483,35 @@ function logout(showMessage = true) {
         "vehiclecare-token"
     );
 
-    document
-        .getElementById("authScreen")
-        .classList.remove("hidden");
+    const authScreen =
+        document.getElementById(
+            "authScreen"
+        );
 
-    document
-        .getElementById("loginUsername")
-        .value = "";
+    if (authScreen) {
 
-    document
-        .getElementById("loginPassword")
-        .value = "";
+        authScreen.classList.remove(
+            "hidden"
+        );
+    }
+
+    const username =
+        document.getElementById(
+            "loginUsername"
+        );
+
+    const password =
+        document.getElementById(
+            "loginPassword"
+        );
+
+    if (username) {
+        username.value = "";
+    }
+
+    if (password) {
+        password.value = "";
+    }
 
     if (showMessage) {
 
@@ -260,6 +521,10 @@ function logout(showMessage = true) {
     }
 }
 
+
+/* =====================================================
+   CHECK AUTHENTICATION
+===================================================== */
 
 function checkAuthentication() {
 
@@ -273,20 +538,30 @@ function checkAuthentication() {
         !refreshToken
     ) {
 
-        authScreen.classList.remove(
-            "hidden"
-        );
+        if (authScreen) {
+
+            authScreen.classList.remove(
+                "hidden"
+            );
+        }
 
         return false;
     }
 
-    authScreen.classList.add(
-        "hidden"
-    );
+    if (authScreen) {
+
+        authScreen.classList.add(
+            "hidden"
+        );
+    }
 
     return true;
 }
 
+
+/* =====================================================
+   PAGE NAVIGATION
+===================================================== */
 
 function showPage(page) {
 
@@ -297,7 +572,6 @@ function showPage(page) {
             section.classList.remove(
                 "active"
             );
-
         });
 
     const selectedPage =
@@ -310,7 +584,6 @@ function showPage(page) {
     selectedPage.classList.add(
         "active"
     );
-
 
     if (page === "dashboard") {
         loadDashboard();
@@ -342,6 +615,196 @@ function showPage(page) {
 }
 
 
+/* =====================================================
+   LOGIN / SIGNUP UI
+===================================================== */
+
+function switchAuth(mode) {
+
+    const loginForm =
+        document.getElementById(
+            "loginForm"
+        );
+
+    const signupForm =
+        document.getElementById(
+            "signupForm"
+        );
+
+    const loginTab =
+        document.getElementById(
+            "loginTab"
+        );
+
+    const signupTab =
+        document.getElementById(
+            "signupTab"
+        );
+
+    const title =
+        document.getElementById(
+            "authTitle"
+        );
+
+    const eyebrow =
+        document.getElementById(
+            "authEyebrow"
+        );
+
+    const subtitle =
+        document.getElementById(
+            "authSubtitle"
+        );
+
+    const message =
+        document.getElementById(
+            "authMessage"
+        );
+
+    const isLogin =
+        mode === "login";
+
+    if (loginForm) {
+
+        loginForm.classList.toggle(
+            "hidden-auth-form",
+            !isLogin
+        );
+    }
+
+    if (signupForm) {
+
+        signupForm.classList.toggle(
+            "hidden-auth-form",
+            isLogin
+        );
+    }
+
+    if (loginTab) {
+
+        loginTab.classList.toggle(
+            "active",
+            isLogin
+        );
+    }
+
+    if (signupTab) {
+
+        signupTab.classList.toggle(
+            "active",
+            !isLogin
+        );
+    }
+
+    if (message) {
+
+        message.classList.remove(
+            "show",
+            "info"
+        );
+    }
+
+    if (isLogin) {
+
+        if (eyebrow) {
+
+            eyebrow.textContent =
+                "WELCOME BACK";
+        }
+
+        if (title) {
+
+            title.textContent =
+                "Sign in to VehicleCare";
+        }
+
+        if (subtitle) {
+
+            subtitle.textContent =
+                "Enter your details to continue to your dashboard.";
+        }
+
+    } else {
+
+        if (eyebrow) {
+
+            eyebrow.textContent =
+                "GET STARTED";
+        }
+
+        if (title) {
+
+            title.textContent =
+                "Create your account";
+        }
+
+        if (subtitle) {
+
+            subtitle.textContent =
+                "Set up your workspace and start managing vehicles smarter.";
+        }
+    }
+}
+
+
+function togglePassword(
+    inputId,
+    button
+) {
+
+    const input =
+        document.getElementById(
+            inputId
+        );
+
+    if (!input) {
+        return;
+    }
+
+    if (
+        input.type === "password"
+    ) {
+
+        input.type = "text";
+
+        button.textContent =
+            "Hide";
+
+    } else {
+
+        input.type = "password";
+
+        button.textContent =
+            "Show";
+    }
+}
+
+
+function showAuthInfo(text) {
+
+    const message =
+        document.getElementById(
+            "authMessage"
+        );
+
+    if (!message) {
+        return;
+    }
+
+    message.textContent =
+        text;
+
+    message.classList.add(
+        "show",
+        "info"
+    );
+}
+
+
+/* =====================================================
+   DASHBOARD
+===================================================== */
+
 async function loadDashboard() {
 
     try {
@@ -352,47 +815,107 @@ async function loadDashboard() {
             );
 
         if (!response.ok) {
-            throw new Error();
+
+            const errorData =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            throw new Error(
+                errorData.message ||
+                `HTTP ${response.status}`
+            );
         }
 
         const data =
             await response.json();
 
-        document.getElementById(
-            "dashVehicles"
-        ).textContent =
-            data.totalVehicles || 0;
+        const dashVehicles =
+            document.getElementById(
+                "dashVehicles"
+            );
 
-        document.getElementById(
-            "dashServices"
-        ).textContent =
-            data.totalServices || 0;
+        const dashServices =
+            document.getElementById(
+                "dashServices"
+            );
 
-        document.getElementById(
-            "dashAppointments"
-        ).textContent =
-            data.totalAppointments || 0;
+        const dashAppointments =
+            document.getElementById(
+                "dashAppointments"
+            );
 
-        document.getElementById(
-            "dashRevenue"
-        ).textContent =
-            `₹${Number(
-                data.totalRevenue || 0
-            ).toLocaleString("en-IN")}`;
+        const dashRevenue =
+            document.getElementById(
+                "dashRevenue"
+            );
 
-        document.getElementById(
-            "dashOverdue"
-        ).textContent =
-            data.overdue || 0;
+        const dashOverdue =
+            document.getElementById(
+                "dashOverdue"
+            );
 
-        document.getElementById(
-            "dashUpcoming"
-        ).textContent =
-            data.upcoming || 0;
+        const dashUpcoming =
+            document.getElementById(
+                "dashUpcoming"
+            );
+
+        if (dashVehicles) {
+
+            dashVehicles.textContent =
+                data.vehicles ??
+                data.totalVehicles ??
+                0;
+        }
+
+        if (dashServices) {
+
+            dashServices.textContent =
+                data.services ??
+                data.totalServices ??
+                0;
+        }
+
+        if (dashAppointments) {
+
+            dashAppointments.textContent =
+                data.appointments ??
+                data.totalAppointments ??
+                0;
+        }
+
+        if (dashRevenue) {
+
+            dashRevenue.textContent =
+                `₹${Number(
+                    data.revenue ??
+                    data.totalRevenue ??
+                    0
+                ).toLocaleString("en-IN")}`;
+        }
+
+        if (dashOverdue) {
+
+            dashOverdue.textContent =
+                data.overdue ??
+                0;
+        }
+
+        if (dashUpcoming) {
+
+            dashUpcoming.textContent =
+                data.upcoming ??
+                0;
+        }
 
         await loadServiceAlerts();
 
     } catch (error) {
+
+        console.error(
+            "Dashboard error:",
+            error
+        );
 
         if (
             error.message !==
@@ -437,22 +960,26 @@ async function loadServiceAlerts() {
             new Date();
 
         const overdue =
-            data.filter(vehicle => {
+            data.filter(
+                vehicle => {
 
-                if (
-                    !vehicle.nextServiceDate
-                ) {
-                    return false;
+                    if (
+                        !vehicle.nextServiceDate
+                    ) {
+                        return false;
+                    }
+
+                    return (
+                        new Date(
+                            vehicle.nextServiceDate
+                        ) < today
+                    );
                 }
+            );
 
-                return (
-                    new Date(
-                        vehicle.nextServiceDate
-                    ) < today
-                );
-            });
-
-        if (overdue.length === 0) {
+        if (
+            overdue.length === 0
+        ) {
 
             container.innerHTML = `
                 <div class="alert">
@@ -465,23 +992,38 @@ async function loadServiceAlerts() {
 
         container.innerHTML =
             overdue
-                .map(vehicle => `
+                .map(
+                    vehicle => `
+
                     <div class="alert">
 
                         <strong>
-                            ${vehicle.vehicleNumber || "-"}
+                            ${
+                                vehicle.vehicleNumber ||
+                                "-"
+                            }
                         </strong>
 
                         <span>
-                            ${vehicle.ownerName || "-"}
+                            ${
+                                vehicle.ownerName ||
+                                "-"
+                            }
                             - Service overdue
                         </span>
 
                     </div>
-                `)
+
+                `
+                )
                 .join("");
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Service alerts error:",
+            error
+        );
 
         container.innerHTML = `
             <div class="alert">
@@ -491,6 +1033,10 @@ async function loadServiceAlerts() {
     }
 }
 
+
+/* =====================================================
+   VEHICLES
+===================================================== */
 
 async function loadVehicles() {
 
@@ -502,7 +1048,16 @@ async function loadVehicles() {
             );
 
         if (!response.ok) {
-            throw new Error();
+
+            const errorData =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            throw new Error(
+                errorData.message ||
+                `HTTP ${response.status}`
+            );
         }
 
         vehicles =
@@ -512,9 +1067,20 @@ async function loadVehicles() {
             vehicles
         );
 
-        populateVehicleSelects();
+        if (
+            typeof populateVehicleSelects ===
+            "function"
+        ) {
+
+            populateVehicleSelects();
+        }
 
     } catch (error) {
+
+        console.error(
+            "loadVehicles error:",
+            error
+        );
 
         if (
             error.message !==
@@ -541,7 +1107,10 @@ function displayVehicles(data) {
         return;
     }
 
-    if (data.length === 0) {
+    if (
+        !data ||
+        data.length === 0
+    ) {
 
         tbody.innerHTML = `
             <tr>
@@ -556,16 +1125,14 @@ function displayVehicles(data) {
 
     tbody.innerHTML =
         data
-            .map(vehicle => {
+            .map(
+                vehicle => {
 
-                let status =
-                    "Active";
-
-                if (
-                    vehicle.nextServiceDate
-                ) {
+                    let status =
+                        "Active";
 
                     if (
+                        vehicle.nextServiceDate &&
                         new Date(
                             vehicle.nextServiceDate
                         ) < new Date()
@@ -574,81 +1141,170 @@ function displayVehicles(data) {
                         status =
                             "Overdue";
                     }
+
+                    return `
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    ${
+                                        vehicle.vehicleNumber ||
+                                        "-"
+                                    }
+                                </strong>
+                            </td>
+
+                            <td>
+                                ${
+                                    vehicle.ownerName ||
+                                    "-"
+                                }
+                            </td>
+
+                            <td>
+                                ${
+                                    vehicle.model ||
+                                    "-"
+                                }
+                            </td>
+
+                            <td>
+                                ${
+                                    vehicle.type ||
+                                    "-"
+                                }
+                            </td>
+
+                            <td>
+                                ${
+                                    vehicle.phone ||
+                                    "-"
+                                }
+                            </td>
+
+                            <td>
+                                ${
+                                    vehicle.nextServiceDate ||
+                                    "-"
+                                }
+                            </td>
+
+                            <td>
+
+                                <span class="status-badge">
+                                    ${status}
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                <div class="table-actions">
+
+                                    <button
+                                        class="small-btn"
+                                        onclick="viewVehicle('${vehicle._id}')"
+                                    >
+                                        View
+                                    </button>
+
+                                    <button
+                                        class="small-btn"
+                                        onclick="editVehicle('${vehicle._id}')"
+                                    >
+                                        Edit
+                                    </button>
+
+                                    <button
+                                        class="small-btn danger"
+                                        onclick="deleteVehicle('${vehicle._id}')"
+                                    >
+                                        Delete
+                                    </button>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                    `;
                 }
-
-                return `
-                    <tr>
-
-                        <td>
-                            <strong>
-                                ${vehicle.vehicleNumber || "-"}
-                            </strong>
-                        </td>
-
-                        <td>
-                            ${vehicle.ownerName || "-"}
-                        </td>
-
-                        <td>
-                            ${vehicle.model || "-"}
-                        </td>
-
-                        <td>
-                            ${vehicle.type || "-"}
-                        </td>
-
-                        <td>
-                            ${vehicle.phone || "-"}
-                        </td>
-
-                        <td>
-                            ${vehicle.nextServiceDate || "-"}
-                        </td>
-
-                        <td>
-                            <span class="status-badge">
-                                ${status}
-                            </span>
-                        </td>
-
-                        <td>
-
-                            <div class="table-actions">
-
-                                <button
-                                    class="small-btn"
-                                    onclick="viewVehicle('${vehicle._id}')">
-                                    View
-                                </button>
-
-                                <button
-                                    class="small-btn"
-                                    onclick="editVehicle('${vehicle._id}')">
-                                    Edit
-                                </button>
-
-                                <button
-                                    class="small-btn danger"
-                                    onclick="deleteVehicle('${vehicle._id}')">
-                                    Delete
-                                </button>
-
-                            </div>
-
-                        </td>
-
-                    </tr>
-                `;
-            })
+            )
             .join("");
 }
 
+
+/* =====================================================
+   VEHICLE DROPDOWNS
+===================================================== */
+
+function populateVehicleSelects() {
+
+    const serviceVehicle =
+        document.getElementById(
+            "serviceVehicle"
+        );
+
+    if (!serviceVehicle) {
+        return;
+    }
+
+    const currentValue =
+        serviceVehicle.value;
+
+    serviceVehicle.innerHTML = `
+        <option value="">
+            Select Vehicle
+        </option>
+    `;
+
+    vehicles.forEach(
+        vehicle => {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value =
+                vehicle._id;
+
+            option.textContent =
+                `${vehicle.vehicleNumber || "-"} - ${
+                    vehicle.ownerName || "-"
+                }`;
+
+            serviceVehicle.appendChild(
+                option
+            );
+        }
+    );
+
+    if (
+        vehicles.some(
+            vehicle =>
+                vehicle._id === currentValue
+        )
+    ) {
+
+        serviceVehicle.value =
+            currentValue;
+    }
+}
+
+
+/* =====================================================
+   VEHICLE VIEW
+===================================================== */
 
 function viewVehicle(id) {
 
     const vehicle =
         vehicles.find(
-            item => item._id === id
+            item =>
+                item._id === id
         );
 
     if (!vehicle) {
@@ -657,150 +1313,214 @@ function viewVehicle(id) {
 
     alert(
         `VEHICLE DETAILS\n\n` +
-        `Vehicle Number: ${vehicle.vehicleNumber || "-"}\n` +
-        `Owner: ${vehicle.ownerName || "-"}\n` +
-        `Model: ${vehicle.model || "-"}\n` +
-        `Type: ${vehicle.type || "-"}\n` +
-        `Phone: ${vehicle.phone || "-"}\n` +
-        `Last Service: ${vehicle.lastServiceDate || "-"}\n` +
-        `Next Service: ${vehicle.nextServiceDate || "-"}\n` +
-        `Service Cost: ₹${Number(
-            vehicle.serviceCost || 0
-        ).toLocaleString("en-IN")}`
+
+        `Vehicle Number: ${
+            vehicle.vehicleNumber || "-"
+        }\n` +
+
+        `Owner: ${
+            vehicle.ownerName || "-"
+        }\n` +
+
+        `Model: ${
+            vehicle.model || "-"
+        }\n` +
+
+        `Type: ${
+            vehicle.type || "-"
+        }\n` +
+
+        `Phone: ${
+            vehicle.phone || "-"
+        }\n` +
+
+        `Last Service: ${
+            vehicle.lastServiceDate || "-"
+        }\n` +
+
+        `Next Service: ${
+            vehicle.nextServiceDate || "-"
+        }\n` +
+
+        `Service Cost: ₹${
+            Number(
+                vehicle.serviceCost || 0
+            ).toLocaleString("en-IN")
+        }`
     );
 }
 
 
 function searchVehicles() {
+
     filterVehicles();
 }
 
 
 function filterVehicles() {
 
-    const search =
-        document
-            .getElementById("vehicleSearch")
-            .value
-            .toLowerCase()
-            .trim();
+    const searchElement =
+        document.getElementById(
+            "vehicleSearch"
+        );
 
-    const type =
+    const filterElement =
         document.getElementById(
             "vehicleFilter"
-        ).value;
-
-    const filtered =
-        vehicles.filter(vehicle => {
-
-            const text =
-                `${vehicle.vehicleNumber || ""} ` +
-                `${vehicle.ownerName || ""} ` +
-                `${vehicle.model || ""} ` +
-                `${vehicle.phone || ""}`
-                    .toLowerCase();
-
-            const matchesSearch =
-                !search ||
-                text.includes(search);
-
-            const matchesType =
-                !type ||
-                vehicle.type === type;
-
-            return (
-                matchesSearch &&
-                matchesType
-            );
-        });
-
-    displayVehicles(filtered);
-}
-
-
-function showVehicleForm() {
-
-    document
-        .getElementById("vehicleForm")
-        .classList.remove("hidden");
-}
-
-
-function hideVehicleForm() {
-
-    document
-        .getElementById("vehicleForm")
-        .classList.add("hidden");
-}
-
-
-async function addVehicle() {
-
-    const data = {
-
-        vehicleNumber:
-            document
-                .getElementById("vehicleNumber")
-                .value
-                .trim(),
-
-        ownerName:
-            document
-                .getElementById("ownerName")
-                .value
-                .trim(),
-
-        model:
-            document
-                .getElementById("model")
-                .value
-                .trim(),
-
-        type:
-            document.getElementById(
-                "type"
-            ).value,
-
-        phone:
-            document
-                .getElementById("phone")
-                .value
-                .trim(),
-
-        lastServiceDate:
-            document.getElementById(
-                "lastServiceDate"
-            ).value,
-
-        nextServiceDate:
-            document.getElementById(
-                "nextServiceDate"
-            ).value,
-
-        serviceCost:
-            Number(
-                document.getElementById(
-                    "serviceCost"
-                ).value || 0
-            )
-    };
-
+        );
 
     if (
-        !data.vehicleNumber ||
-        !data.ownerName ||
-        !data.model ||
-        !data.type
+        !searchElement ||
+        !filterElement
     ) {
 
-        showToast(
-            "Please fill the required vehicle details",
-            true
+        displayVehicles(
+            vehicles
         );
 
         return;
     }
 
+    const search =
+        searchElement.value
+            .toLowerCase()
+            .trim();
+
+    const type =
+        filterElement.value;
+
+    const filtered =
+        vehicles.filter(
+            vehicle => {
+
+                const text = `
+                    ${vehicle.vehicleNumber || ""}
+                    ${vehicle.ownerName || ""}
+                    ${vehicle.model || ""}
+                    ${vehicle.phone || ""}
+                `.toLowerCase();
+
+                const matchesSearch =
+                    !search ||
+                    text.includes(search);
+
+                const matchesType =
+                    !type ||
+                    vehicle.type === type;
+
+                return (
+                    matchesSearch &&
+                    matchesType
+                );
+            }
+        );
+
+    displayVehicles(
+        filtered
+    );
+}
+
+
+function showVehicleForm() {
+
+    const form =
+        document.getElementById(
+            "vehicleForm"
+        );
+
+    if (form) {
+
+        form.classList.remove(
+            "hidden"
+        );
+    }
+}
+
+
+function hideVehicleForm() {
+
+    const form =
+        document.getElementById(
+            "vehicleForm"
+        );
+
+    if (form) {
+
+        form.classList.add(
+            "hidden"
+        );
+    }
+}
+
+
+/* =====================================================
+   ADD VEHICLE
+===================================================== */
+
+async function addVehicle() {
+
+    const getValue =
+        id => {
+
+            const element =
+                document.getElementById(
+                    id
+                );
+
+            return element
+                ? element.value.trim()
+                : "";
+        };
+
+    const data = {
+
+        vehicleNumber:
+            getValue("vehicleNumber"),
+
+        ownerName:
+            getValue("ownerName"),
+
+        model:
+            getValue("vehicleModel"),
+
+        type:
+            document.getElementById(
+                "vehicleType"
+            )?.value || "",
+
+        phone:
+            getValue("vehiclePhone"),
+
+        lastServiceDate:
+            document.getElementById(
+                "lastServiceDate"
+            )?.value || "",
+
+        nextServiceDate:
+            document.getElementById(
+                "nextServiceDate"
+            )?.value || "",
+
+        serviceCost:
+            Number(
+                document.getElementById(
+                    "serviceCost"
+                )?.value || 0
+            )
+    };
+
+    if (
+        !data.vehicleNumber ||
+        !data.ownerName
+    ) {
+
+        showToast(
+            "Vehicle number and owner name are required",
+            true
+        );
+
+        return;
+    }
 
     try {
 
@@ -820,42 +1540,40 @@ async function addVehicle() {
                 }
             );
 
+        const result =
+            await response
+                .json()
+                .catch(() => ({}));
+
         if (!response.ok) {
-            throw new Error();
+
+            throw new Error(
+                result.message ||
+                "Failed to add vehicle"
+            );
         }
-
-        [
-            "vehicleNumber",
-            "ownerName",
-            "model",
-            "phone",
-            "lastServiceDate",
-            "nextServiceDate",
-            "serviceCost"
-        ].forEach(id => {
-
-            document.getElementById(
-                id
-            ).value = "";
-
-        });
-
-        document.getElementById(
-            "type"
-        ).value = "";
-
-        hideVehicleForm();
-
-        await loadVehicles();
-        await loadDashboard();
 
         showToast(
             "Vehicle added successfully"
         );
 
-    } catch {
+        clearVehicleForm();
+
+        await loadVehicles();
+
+        showPage(
+            "vehicles"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Add vehicle error:",
+            error
+        );
 
         showToast(
+            error.message ||
             "Failed to add vehicle",
             true
         );
@@ -863,154 +1581,40 @@ async function addVehicle() {
 }
 
 
-async function editVehicle(id) {
+function clearVehicleForm() {
 
-    const vehicle =
-        vehicles.find(
-            item => item._id === id
-        );
+    const ids = [
 
-    if (!vehicle) {
-        return;
-    }
+        "vehicleNumber",
+        "ownerName",
+        "vehicleModel",
+        "vehicleType",
+        "vehiclePhone",
+        "lastServiceDate",
+        "nextServiceDate",
+        "serviceCost"
 
-    const ownerName =
-        prompt(
-            "Enter owner name:",
-            vehicle.ownerName || ""
-        );
+    ];
 
-    if (ownerName === null) {
-        return;
-    }
+    ids.forEach(
+        id => {
 
-    const phone =
-        prompt(
-            "Enter phone number:",
-            vehicle.phone || ""
-        );
+            const element =
+                document.getElementById(
+                    id
+                );
 
-    if (phone === null) {
-        return;
-    }
-
-    try {
-
-        const response =
-            await apiFetch(
-                `${API}/vehicles/${id}`,
-                {
-                    method: "PUT",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            ownerName,
-                            phone
-                        })
-                }
-            );
-
-        if (!response.ok) {
-            throw new Error();
+            if (element) {
+                element.value = "";
+            }
         }
-
-        await loadVehicles();
-
-        showToast(
-            "Vehicle updated successfully"
-        );
-
-    } catch {
-
-        showToast(
-            "Failed to update vehicle",
-            true
-        );
-    }
+    );
 }
 
 
-async function deleteVehicle(id) {
-
-    const vehicle =
-        vehicles.find(
-            item => item._id === id
-        );
-
-    if (!vehicle) {
-        return;
-    }
-
-    if (
-        !confirm(
-            `Delete ${vehicle.vehicleNumber}?`
-        )
-    ) {
-        return;
-    }
-
-    try {
-
-        const response =
-            await apiFetch(
-                `${API}/vehicles/${id}`,
-                {
-                    method: "DELETE"
-                }
-            );
-
-        if (!response.ok) {
-            throw new Error();
-        }
-
-        await loadVehicles();
-        await loadDashboard();
-
-        showToast(
-            "Vehicle deleted successfully"
-        );
-
-    } catch {
-
-        showToast(
-            "Failed to delete vehicle",
-            true
-        );
-    }
-}
-
-
-function populateVehicleSelects() {
-
-    const select =
-        document.getElementById(
-            "serviceVehicle"
-        );
-
-    if (!select) {
-        return;
-    }
-
-    select.innerHTML =
-        `<option value="">
-            Select Vehicle
-        </option>` +
-
-        vehicles
-            .map(vehicle => `
-                <option value="${vehicle._id}">
-                    ${vehicle.vehicleNumber} -
-                    ${vehicle.ownerName}
-                </option>
-            `)
-            .join("");
-}
-
+/* =====================================================
+   SERVICES
+===================================================== */
 
 async function loadServices() {
 
@@ -1022,7 +1626,16 @@ async function loadServices() {
             );
 
         if (!response.ok) {
-            throw new Error();
+
+            const errorData =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            throw new Error(
+                errorData.message ||
+                `HTTP ${response.status}`
+            );
         }
 
         services =
@@ -1034,93 +1647,116 @@ async function loadServices() {
 
         populateVehicleSelects();
 
-    } catch {
+    } catch (error) {
 
-        showToast(
-            "Failed to load services",
-            true
+        console.error(
+            "Failed to load services:",
+            error
         );
+
+        if (
+            error.message !==
+            "Authentication required"
+        ) {
+
+            showToast(
+                "Failed to load services",
+                true
+            );
+        }
     }
 }
 
 
 function displayServices(data) {
 
-    const tbody =
+    const container =
         document.getElementById(
             "serviceList"
         );
 
-    if (!tbody) {
+    if (!container) {
         return;
     }
 
-    if (data.length === 0) {
+    if (
+        !data ||
+        data.length === 0
+    ) {
 
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7">
-                    No service records found.
-                </td>
-            </tr>
+        container.innerHTML = `
+            <div class="panel">
+                No services found.
+            </div>
         `;
 
         return;
     }
 
-    tbody.innerHTML =
+    container.innerHTML =
         data
-            .map(service => `
-                <tr>
+            .map(
+                service => `
 
-                    <td>
-                        ${service.serviceDate || "-"}
-                    </td>
+                <div class="service-card">
 
-                    <td>
-                        ${service.vehicleNumber || "-"}
-                    </td>
+                    <h3>
+                        ${
+                            service.serviceType ||
+                            "-"
+                        }
+                    </h3>
 
-                    <td>
-                        ${service.serviceType || "-"}
-                    </td>
+                    <p>
+                        🚗 ${
+                            service.vehicleNumber ||
+                            "-"
+                        }
+                    </p>
 
-                    <td>
-                        ${service.technician || "-"}
-                    </td>
+                    <p>
+                        ${
+                            service.description ||
+                            "-"
+                        }
+                    </p>
 
-                    <td>
+                    <p>
                         ₹${Number(
-                            service.partsCost || 0
-                        ).toLocaleString("en-IN")}
-                    </td>
+                            service.totalCost ??
+                            service.cost ??
+                            0
+                        ).toLocaleString(
+                            "en-IN"
+                        )}
+                    </p>
 
-                    <td>
-                        ₹${Number(
-                            service.labourCost || 0
-                        ).toLocaleString("en-IN")}
-                    </td>
+                    <span class="status-badge">
+                        ${
+                            service.status ||
+                            "Pending"
+                        }
+                    </span>
 
-                    <td>
-                        <strong>
-                            ₹${Number(
-                                service.totalCost || 0
-                            ).toLocaleString("en-IN")}
-                        </strong>
-                    </td>
+                </div>
 
-                </tr>
-            `)
+            `
+            )
             .join("");
 }
 
 
 async function addService() {
 
-    const vehicleId =
+    const vehicleElement =
         document.getElementById(
             "serviceVehicle"
-        ).value;
+        );
+
+    const vehicleId =
+        vehicleElement
+            ? vehicleElement.value
+            : "";
 
     if (!vehicleId) {
 
@@ -1134,10 +1770,17 @@ async function addService() {
 
     const vehicle =
         vehicles.find(
-            item => item._id === vehicleId
+            item =>
+                item._id === vehicleId
         );
 
     if (!vehicle) {
+
+        showToast(
+            "Selected vehicle not found",
+            true
+        );
+
         return;
     }
 
@@ -1145,14 +1788,14 @@ async function addService() {
         Number(
             document.getElementById(
                 "partsCost"
-            ).value || 0
+            )?.value || 0
         );
 
     const labourCost =
         Number(
             document.getElementById(
                 "labourCost"
-            ).value || 0
+            )?.value || 0
         );
 
     const data = {
@@ -1165,38 +1808,36 @@ async function addService() {
         serviceDate:
             document.getElementById(
                 "serviceDate"
-            ).value,
+            )?.value || "",
 
         serviceType:
             document.getElementById(
                 "serviceType"
-            ).value,
+            )?.value || "",
 
         description:
             document.getElementById(
                 "serviceDescription"
-            ).value
-            .trim(),
+            )?.value.trim() || "",
 
         technician:
             document.getElementById(
                 "technician"
-            ).value
-            .trim(),
+            )?.value.trim() || "",
 
         partsCost,
 
         labourCost,
 
         totalCost:
-            partsCost + labourCost,
+            partsCost +
+            labourCost,
 
         nextServiceDate:
             document.getElementById(
                 "nextService"
-            ).value
+            )?.value || ""
     };
-
 
     try {
 
@@ -1216,8 +1857,17 @@ async function addService() {
                 }
             );
 
+        const result =
+            await response
+                .json()
+                .catch(() => ({}));
+
         if (!response.ok) {
-            throw new Error();
+
+            throw new Error(
+                result.message ||
+                "Failed to add service"
+            );
         }
 
         [
@@ -1227,21 +1877,32 @@ async function addService() {
             "labourCost",
             "nextService",
             "serviceDescription"
-        ].forEach(id => {
+        ].forEach(
+            id => {
 
+                const element =
+                    document.getElementById(
+                        id
+                    );
+
+                if (element) {
+                    element.value = "";
+                }
+            }
+        );
+
+        if (vehicleElement) {
+            vehicleElement.value = "";
+        }
+
+        const serviceType =
             document.getElementById(
-                id
-            ).value = "";
+                "serviceType"
+            );
 
-        });
-
-        document.getElementById(
-            "serviceVehicle"
-        ).value = "";
-
-        document.getElementById(
-            "serviceType"
-        ).value = "";
+        if (serviceType) {
+            serviceType.value = "";
+        }
 
         await loadServices();
         await loadVehicles();
@@ -1251,15 +1912,25 @@ async function addService() {
             "Service added successfully"
         );
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Add service error:",
+            error
+        );
 
         showToast(
+            error.message ||
             "Failed to add service",
             true
         );
     }
 }
 
+
+/* =====================================================
+   CUSTOMERS
+===================================================== */
 
 async function loadCustomers() {
 
@@ -1271,7 +1942,16 @@ async function loadCustomers() {
             );
 
         if (!response.ok) {
-            throw new Error();
+
+            const errorData =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            throw new Error(
+                errorData.message ||
+                `HTTP ${response.status}`
+            );
         }
 
         customers =
@@ -1281,12 +1961,23 @@ async function loadCustomers() {
             customers
         );
 
-    } catch {
+    } catch (error) {
 
-        showToast(
-            "Failed to load customers",
-            true
+        console.error(
+            "Load customers error:",
+            error
         );
+
+        if (
+            error.message !==
+            "Authentication required"
+        ) {
+
+            showToast(
+                "Failed to load customers",
+                true
+            );
+        }
     }
 }
 
@@ -1302,7 +1993,10 @@ function displayCustomers(data) {
         return;
     }
 
-    if (data.length === 0) {
+    if (
+        !data ||
+        data.length === 0
+    ) {
 
         container.innerHTML = `
             <div class="panel">
@@ -1315,45 +2009,65 @@ function displayCustomers(data) {
 
     container.innerHTML =
         data
-            .map(customer => `
+            .map(
+                customer => `
+
                 <div class="customer-card">
 
                     <div class="customer-avatar">
+
                         ${String(
-                            customer.name || "C"
+                            customer.name ||
+                            "C"
                         )
                             .charAt(0)
                             .toUpperCase()}
+
                     </div>
 
                     <div class="customer-info">
 
                         <h3>
-                            ${customer.name || "-"}
+                            ${
+                                customer.name ||
+                                "-"
+                            }
                         </h3>
 
                         <p>
-                            📞 ${customer.phone || "-"}
+                            📞 ${
+                                customer.phone ||
+                                "-"
+                            }
                         </p>
 
                         <p>
-                            ✉️ ${customer.email || "-"}
+                            ✉️ ${
+                                customer.email ||
+                                "-"
+                            }
                         </p>
 
                         <p>
-                            📍 ${customer.address || "-"}
+                            📍 ${
+                                customer.address ||
+                                "-"
+                            }
                         </p>
 
                     </div>
 
                     <button
                         class="small-btn danger"
-                        onclick="deleteCustomer('${customer._id}')">
+                        onclick="deleteCustomer('${customer._id}')"
+                    >
                         Delete
                     </button>
 
                 </div>
-            `)
+
+            `
+            )
             .join("");
 }
 
@@ -1364,29 +2078,36 @@ async function addCustomer() {
 
         name:
             document
-                .getElementById("customerName")
+                .getElementById(
+                    "customerName"
+                )
                 .value
                 .trim(),
 
         phone:
             document
-                .getElementById("customerPhone")
+                .getElementById(
+                    "customerPhone"
+                )
                 .value
                 .trim(),
 
         email:
             document
-                .getElementById("customerEmail")
+                .getElementById(
+                    "customerEmail"
+                )
                 .value
                 .trim(),
 
         address:
             document
-                .getElementById("customerAddress")
+                .getElementById(
+                    "customerAddress"
+                )
                 .value
                 .trim()
     };
-
 
     if (
         !data.name ||
@@ -1400,7 +2121,6 @@ async function addCustomer() {
 
         return;
     }
-
 
     try {
 
@@ -1420,8 +2140,17 @@ async function addCustomer() {
                 }
             );
 
+        const result =
+            await response
+                .json()
+                .catch(() => ({}));
+
         if (!response.ok) {
-            throw new Error();
+
+            throw new Error(
+                result.message ||
+                "Failed to add customer"
+            );
         }
 
         [
@@ -1429,13 +2158,19 @@ async function addCustomer() {
             "customerPhone",
             "customerEmail",
             "customerAddress"
-        ].forEach(id => {
+        ].forEach(
+            id => {
 
-            document.getElementById(
-                id
-            ).value = "";
+                const element =
+                    document.getElementById(
+                        id
+                    );
 
-        });
+                if (element) {
+                    element.value = "";
+                }
+            }
+        );
 
         await loadCustomers();
 
@@ -1443,9 +2178,15 @@ async function addCustomer() {
             "Customer added successfully"
         );
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Add customer error:",
+            error
+        );
 
         showToast(
+            error.message ||
             "Failed to add customer",
             true
         );
@@ -1483,7 +2224,12 @@ async function deleteCustomer(id) {
             "Customer deleted successfully"
         );
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Delete customer error:",
+            error
+        );
 
         showToast(
             "Failed to delete customer",
@@ -1492,6 +2238,10 @@ async function deleteCustomer(id) {
     }
 }
 
+
+/* =====================================================
+   APPOINTMENTS
+===================================================== */
 
 async function loadAppointments() {
 
@@ -1503,7 +2253,16 @@ async function loadAppointments() {
             );
 
         if (!response.ok) {
-            throw new Error();
+
+            const errorData =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            throw new Error(
+                errorData.message ||
+                `HTTP ${response.status}`
+            );
         }
 
         appointments =
@@ -1513,12 +2272,23 @@ async function loadAppointments() {
             appointments
         );
 
-    } catch {
+    } catch (error) {
 
-        showToast(
-            "Failed to load appointments",
-            true
+        console.error(
+            "Load appointments error:",
+            error
         );
+
+        if (
+            error.message !==
+            "Authentication required"
+        ) {
+
+            showToast(
+                "Failed to load appointments",
+                true
+            );
+        }
     }
 }
 
@@ -1534,7 +2304,10 @@ function displayAppointments(data) {
         return;
     }
 
-    if (data.length === 0) {
+    if (
+        !data ||
+        data.length === 0
+    ) {
 
         container.innerHTML = `
             <div class="panel">
@@ -1547,59 +2320,86 @@ function displayAppointments(data) {
 
     container.innerHTML =
         data
-            .map(appointment => `
+            .map(
+                appointment => `
+
                 <div class="appointment-card">
 
                     <div class="appointment-header">
 
                         <h3>
-                            ${appointment.customerName || "-"}
+                            ${
+                                appointment.customerName ||
+                                "-"
+                            }
                         </h3>
 
                         <span class="status-badge">
-                            ${appointment.status || "Pending"}
+                            ${
+                                appointment.status ||
+                                "Pending"
+                            }
                         </span>
 
                     </div>
 
                     <p>
-                        📞 ${appointment.phone || "-"}
+                        📞 ${
+                            appointment.phone ||
+                            "-"
+                        }
                     </p>
 
                     <p>
-                        🚗 ${appointment.vehicleNumber || "-"}
+                        🚗 ${
+                            appointment.vehicleNumber ||
+                            "-"
+                        }
                     </p>
 
                     <p>
-                        🔧 ${appointment.serviceType || "-"}
+                        🔧 ${
+                            appointment.serviceType ||
+                            "-"
+                        }
                     </p>
 
                     <p>
-                        📅 ${appointment.appointmentDate || "-"}
+                        📅 ${
+                            appointment.appointmentDate ||
+                            "-"
+                        }
                     </p>
 
                     <p>
-                        🕒 ${appointment.appointmentTime || "-"}
+                        🕒 ${
+                            appointment.appointmentTime ||
+                            "-"
+                        }
                     </p>
 
                     <div class="card-actions">
 
                         <button
                             class="small-btn"
-                            onclick="completeAppointment('${appointment._id}')">
+                            onclick="completeAppointment('${appointment._id}')"
+                        >
                             Complete
                         </button>
 
                         <button
                             class="small-btn danger"
-                            onclick="deleteAppointment('${appointment._id}')">
+                            onclick="deleteAppointment('${appointment._id}')"
+                        >
                             Delete
                         </button>
 
                     </div>
 
                 </div>
-            `)
+
+            `
+            )
             .join("");
 }
 
@@ -1651,7 +2451,6 @@ async function addAppointment() {
             "Pending"
     };
 
-
     try {
 
         const response =
@@ -1670,8 +2469,17 @@ async function addAppointment() {
                 }
             );
 
+        const result =
+            await response
+                .json()
+                .catch(() => ({}));
+
         if (!response.ok) {
-            throw new Error();
+
+            throw new Error(
+                result.message ||
+                "Failed to add appointment"
+            );
         }
 
         [
@@ -1680,17 +2488,28 @@ async function addAppointment() {
             "appointmentVehicle",
             "appointmentDate",
             "appointmentTime"
-        ].forEach(id => {
+        ].forEach(
+            id => {
 
+                const element =
+                    document.getElementById(
+                        id
+                    );
+
+                if (element) {
+                    element.value = "";
+                }
+            }
+        );
+
+        const appointmentService =
             document.getElementById(
-                id
-            ).value = "";
+                "appointmentService"
+            );
 
-        });
-
-        document.getElementById(
-            "appointmentService"
-        ).value = "";
+        if (appointmentService) {
+            appointmentService.value = "";
+        }
 
         await loadAppointments();
         await loadDashboard();
@@ -1699,9 +2518,15 @@ async function addAppointment() {
             "Appointment booked successfully"
         );
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Add appointment error:",
+            error
+        );
 
         showToast(
+            error.message ||
             "Failed to add appointment",
             true
         );
@@ -1724,11 +2549,10 @@ async function completeAppointment(id) {
                             "application/json"
                     },
 
-                    body:
-                        JSON.stringify({
-                            status:
-                                "Completed"
-                        })
+                    body: JSON.stringify({
+                        status:
+                            "Completed"
+                    })
                 }
             );
 
@@ -1742,7 +2566,12 @@ async function completeAppointment(id) {
             "Appointment completed"
         );
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Complete appointment error:",
+            error
+        );
 
         showToast(
             "Failed to update appointment",
@@ -1783,7 +2612,12 @@ async function deleteAppointment(id) {
             "Appointment deleted successfully"
         );
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Delete appointment error:",
+            error
+        );
 
         showToast(
             "Failed to delete appointment",
@@ -1792,6 +2626,10 @@ async function deleteAppointment(id) {
     }
 }
 
+
+/* =====================================================
+   INVOICES
+===================================================== */
 
 async function loadInvoices() {
 
@@ -1803,7 +2641,16 @@ async function loadInvoices() {
             );
 
         if (!response.ok) {
-            throw new Error();
+
+            const errorData =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            throw new Error(
+                errorData.message ||
+                `HTTP ${response.status}`
+            );
         }
 
         invoices =
@@ -1813,12 +2660,23 @@ async function loadInvoices() {
             invoices
         );
 
-    } catch {
+    } catch (error) {
 
-        showToast(
-            "Failed to load invoices",
-            true
+        console.error(
+            "Load invoices error:",
+            error
         );
+
+        if (
+            error.message !==
+            "Authentication required"
+        ) {
+
+            showToast(
+                "Failed to load invoices",
+                true
+            );
+        }
     }
 }
 
@@ -1834,7 +2692,10 @@ function displayInvoices(data) {
         return;
     }
 
-    if (data.length === 0) {
+    if (
+        !data ||
+        data.length === 0
+    ) {
 
         tbody.innerHTML = `
             <tr>
@@ -1849,49 +2710,74 @@ function displayInvoices(data) {
 
     tbody.innerHTML =
         data
-            .map(invoice => `
+            .map(
+                invoice => `
+
                 <tr>
 
                     <td>
-                        ${invoice.invoiceNumber || "-"}
+                        ${
+                            invoice.invoiceNumber ||
+                            "-"
+                        }
                     </td>
 
                     <td>
-                        ${invoice.customerName || "-"}
+                        ${
+                            invoice.customerName ||
+                            "-"
+                        }
                     </td>
 
                     <td>
-                        ${invoice.vehicleNumber || "-"}
+                        ${
+                            invoice.vehicleNumber ||
+                            "-"
+                        }
                     </td>
 
                     <td>
-                        ${invoice.serviceType || "-"}
+                        ${
+                            invoice.serviceType ||
+                            "-"
+                        }
                     </td>
 
                     <td>
-                        ${invoice.serviceDate || "-"}
+                        ${
+                            invoice.serviceDate ||
+                            "-"
+                        }
                     </td>
 
                     <td>
+
                         <strong>
                             ₹${Number(
-                                invoice.total || 0
-                            ).toLocaleString("en-IN")}
+                                invoice.total ||
+                                0
+                            ).toLocaleString(
+                                "en-IN"
+                            )}
                         </strong>
+
                     </td>
 
                     <td>
 
                         <button
                             class="small-btn"
-                            onclick="printInvoice('${invoice._id}')">
+                            onclick="printInvoice('${invoice._id}')"
+                        >
                             Print
                         </button>
 
                     </td>
 
                 </tr>
-            `)
+
+            `
+            )
             .join("");
 }
 
@@ -1939,7 +2825,6 @@ async function createInvoice() {
         subtotal +
         taxAmount -
         discount;
-
 
     const data = {
 
@@ -2003,7 +2888,6 @@ async function createInvoice() {
         total
     };
 
-
     try {
 
         const response =
@@ -2022,8 +2906,17 @@ async function createInvoice() {
                 }
             );
 
+        const result =
+            await response
+                .json()
+                .catch(() => ({}));
+
         if (!response.ok) {
-            throw new Error();
+
+            throw new Error(
+                result.message ||
+                "Failed to create invoice"
+            );
         }
 
         [
@@ -2037,13 +2930,19 @@ async function createInvoice() {
             "invoiceLabour",
             "invoiceTax",
             "invoiceDiscount"
-        ].forEach(id => {
+        ].forEach(
+            id => {
 
-            document.getElementById(
-                id
-            ).value = "";
+                const element =
+                    document.getElementById(
+                        id
+                    );
 
-        });
+                if (element) {
+                    element.value = "";
+                }
+            }
+        );
 
         await loadInvoices();
         await loadDashboard();
@@ -2052,9 +2951,15 @@ async function createInvoice() {
             "Invoice created successfully"
         );
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "Create invoice error:",
+            error
+        );
 
         showToast(
+            error.message ||
             "Failed to create invoice",
             true
         );
@@ -2062,11 +2967,16 @@ async function createInvoice() {
 }
 
 
+/* =====================================================
+   PRINT INVOICE
+===================================================== */
+
 function printInvoice(id) {
 
     const invoice =
         invoices.find(
-            item => item._id === id
+            item =>
+                item._id === id
         );
 
     if (!invoice) {
@@ -2080,7 +2990,18 @@ function printInvoice(id) {
             "width=800,height=900"
         );
 
+    if (!printWindow) {
+
+        showToast(
+            "Please allow pop-ups to print invoice.",
+            true
+        );
+
+        return;
+    }
+
     printWindow.document.write(`
+
         <!DOCTYPE html>
 
         <html>
@@ -2088,37 +3009,53 @@ function printInvoice(id) {
         <head>
 
             <title>
-                ${invoice.invoiceNumber}
+                ${invoice.invoiceNumber || "Invoice"}
             </title>
 
             <style>
 
                 body {
-                    font-family: Arial;
-                    padding: 40px;
-                    color: #111827;
+                    font-family:
+                        Arial,
+                        sans-serif;
+
+                    padding:
+                        40px;
+
+                    color:
+                        #111827;
                 }
 
                 h1 {
-                    margin-bottom: 5px;
+                    margin-bottom:
+                        5px;
                 }
 
                 .line {
                     border-bottom:
                         1px solid #ddd;
-                    margin: 20px 0;
+
+                    margin:
+                        20px 0;
                 }
 
                 .row {
-                    display: flex;
+                    display:
+                        flex;
+
                     justify-content:
                         space-between;
-                    padding: 8px 0;
+
+                    padding:
+                        8px 0;
                 }
 
                 .total {
-                    font-size: 20px;
-                    font-weight: bold;
+                    font-size:
+                        20px;
+
+                    font-weight:
+                        bold;
                 }
 
             </style>
@@ -2140,49 +3077,70 @@ function printInvoice(id) {
             <div class="row">
                 <strong>Invoice:</strong>
                 <span>
-                    ${invoice.invoiceNumber || "-"}
+                    ${
+                        invoice.invoiceNumber ||
+                        "-"
+                    }
                 </span>
             </div>
 
             <div class="row">
                 <strong>Customer:</strong>
                 <span>
-                    ${invoice.customerName || "-"}
+                    ${
+                        invoice.customerName ||
+                        "-"
+                    }
                 </span>
             </div>
 
             <div class="row">
                 <strong>Phone:</strong>
                 <span>
-                    ${invoice.phone || "-"}
+                    ${
+                        invoice.phone ||
+                        "-"
+                    }
                 </span>
             </div>
 
             <div class="row">
                 <strong>Vehicle:</strong>
                 <span>
-                    ${invoice.vehicleNumber || "-"}
+                    ${
+                        invoice.vehicleNumber ||
+                        "-"
+                    }
                 </span>
             </div>
 
             <div class="row">
                 <strong>Model:</strong>
                 <span>
-                    ${invoice.model || "-"}
+                    ${
+                        invoice.model ||
+                        "-"
+                    }
                 </span>
             </div>
 
             <div class="row">
                 <strong>Service:</strong>
                 <span>
-                    ${invoice.serviceType || "-"}
+                    ${
+                        invoice.serviceType ||
+                        "-"
+                    }
                 </span>
             </div>
 
             <div class="row">
                 <strong>Date:</strong>
                 <span>
-                    ${invoice.serviceDate || "-"}
+                    ${
+                        invoice.serviceDate ||
+                        "-"
+                    }
                 </span>
             </div>
 
@@ -2237,21 +3195,25 @@ function printInvoice(id) {
 
             <script>
 
-                window.onload =
-                    function() {
-                        window.print();
-                    };
+                window.onload = function() {
+                    window.print();
+                };
 
             <\/script>
 
         </body>
 
         </html>
+
     `);
 
     printWindow.document.close();
 }
 
+
+/* =====================================================
+   REPORTS
+===================================================== */
 
 async function loadReports() {
 
@@ -2269,44 +3231,73 @@ async function loadReports() {
         const dashboard =
             await response.json();
 
-        document.getElementById(
-            "reportVehicles"
-        ).textContent =
-            dashboard.totalVehicles || 0;
+        const reportVehicles =
+            document.getElementById(
+                "reportVehicles"
+            );
 
-        document.getElementById(
-            "reportServices"
-        ).textContent =
-            dashboard.totalServices || 0;
+        const reportServices =
+            document.getElementById(
+                "reportServices"
+            );
 
-        document.getElementById(
-            "reportRevenue"
-        ).textContent =
-            `₹${Number(
-                dashboard.totalRevenue || 0
-            ).toLocaleString("en-IN")}`;
+        const reportRevenue =
+            document.getElementById(
+                "reportRevenue"
+            );
 
+        if (reportVehicles) {
+
+            reportVehicles.textContent =
+                dashboard.totalVehicles ??
+                dashboard.vehicles ??
+                0;
+        }
+
+        if (reportServices) {
+
+            reportServices.textContent =
+                dashboard.totalServices ??
+                dashboard.services ??
+                0;
+        }
+
+        if (reportRevenue) {
+
+            reportRevenue.textContent =
+                `₹${Number(
+                    dashboard.totalRevenue ??
+                    dashboard.revenue ??
+                    0
+                ).toLocaleString("en-IN")}`;
+        }
 
         const vehiclesResponse =
             await apiFetch(
                 `${API}/vehicles`
             );
 
+        if (!vehiclesResponse.ok) {
+            throw new Error();
+        }
+
         const data =
             await vehiclesResponse.json();
 
         const counts = {};
 
-        data.forEach(vehicle => {
+        data.forEach(
+            vehicle => {
 
-            const type =
-                vehicle.type ||
-                "Other";
+                const type =
+                    vehicle.type ||
+                    "Other";
 
-            counts[type] =
-                (counts[type] || 0) + 1;
-        });
-
+                counts[type] =
+                    (counts[type] || 0) +
+                    1;
+            }
+        );
 
         const canvas =
             document.getElementById(
@@ -2317,22 +3308,33 @@ async function loadReports() {
             return;
         }
 
-
         if (vehicleChart) {
 
             vehicleChart.destroy();
 
-            vehicleChart =
-                null;
+            vehicleChart = null;
         }
 
-
         if (
-            Object.keys(counts).length === 0
+            Object.keys(
+                counts
+            ).length === 0
         ) {
+
             return;
         }
 
+        if (
+            typeof Chart ===
+            "undefined"
+        ) {
+
+            console.error(
+                "Chart.js is not loaded."
+            );
+
+            return;
+        }
 
         vehicleChart =
             new Chart(
@@ -2354,14 +3356,16 @@ async function loadReports() {
                                         counts
                                     ),
 
-                                borderWidth: 2
+                                borderWidth:
+                                    2
                             }
                         ]
                     },
 
                     options: {
 
-                        responsive: true,
+                        responsive:
+                            true,
 
                         maintainAspectRatio:
                             false,
@@ -2372,25 +3376,36 @@ async function loadReports() {
 
                                 position:
                                     "bottom"
-
                             }
-
                         }
-
                     }
-
                 }
             );
 
-    } catch {
+    } catch (error) {
 
-        showToast(
-            "Reports failed",
-            true
+        console.error(
+            "Reports error:",
+            error
         );
+
+        if (
+            error.message !==
+            "Authentication required"
+        ) {
+
+            showToast(
+                "Reports failed",
+                true
+            );
+        }
     }
 }
 
+
+/* =====================================================
+   EXPORT
+===================================================== */
 
 function exportVehicles() {
 
@@ -2406,7 +3421,6 @@ function exportVehicles() {
         return;
     }
 
-
     const headers = [
 
         "Vehicle Number",
@@ -2420,28 +3434,34 @@ function exportVehicles() {
 
     ];
 
-
     const rows =
-        vehicles.map(vehicle => [
+        vehicles.map(
+            vehicle => [
 
-            vehicle.vehicleNumber || "",
-            vehicle.ownerName || "",
-            vehicle.model || "",
-            vehicle.type || "",
-            vehicle.phone || "",
-            vehicle.lastServiceDate || "",
-            vehicle.nextServiceDate || "",
-            vehicle.serviceCost || 0
+                vehicle.vehicleNumber || "",
 
-        ]);
+                vehicle.ownerName || "",
 
+                vehicle.model || "",
+
+                vehicle.type || "",
+
+                vehicle.phone || "",
+
+                vehicle.lastServiceDate || "",
+
+                vehicle.nextServiceDate || "",
+
+                vehicle.serviceCost || 0
+
+            ]
+        );
 
     downloadCSV(
         "vehicles.csv",
         headers,
         rows
     );
-
 
     showToast(
         "Vehicles exported successfully"
@@ -2463,7 +3483,6 @@ function exportServices() {
         return;
     }
 
-
     const headers = [
 
         "Date",
@@ -2476,27 +3495,32 @@ function exportServices() {
 
     ];
 
-
     const rows =
-        services.map(service => [
+        services.map(
+            service => [
 
-            service.serviceDate || "",
-            service.vehicleNumber || "",
-            service.serviceType || "",
-            service.technician || "",
-            service.partsCost || 0,
-            service.labourCost || 0,
-            service.totalCost || 0
+                service.serviceDate || "",
 
-        ]);
+                service.vehicleNumber || "",
 
+                service.serviceType || "",
+
+                service.technician || "",
+
+                service.partsCost || 0,
+
+                service.labourCost || 0,
+
+                service.totalCost || 0
+
+            ]
+        );
 
     downloadCSV(
         "services.csv",
         headers,
         rows
     );
-
 
     showToast(
         "Services exported successfully"
@@ -2515,19 +3539,21 @@ function downloadCSV(
             headers,
             ...rows
         ]
-            .map(row =>
-                row
-                    .map(value =>
-                        `"${String(value)
-                            .replace(
-                                /"/g,
-                                '""'
-                            )}"`
-                    )
-                    .join(",")
+            .map(
+                row =>
+                    row
+                        .map(
+                            value =>
+                                `"${String(
+                                    value
+                                ).replace(
+                                    /"/g,
+                                    '""'
+                                )}"`
+                        )
+                        .join(",")
             )
             .join("\n");
-
 
     const blob =
         new Blob(
@@ -2538,22 +3564,21 @@ function downloadCSV(
             }
         );
 
-
     const url =
-        URL.createObjectURL(blob);
-
+        URL.createObjectURL(
+            blob
+        );
 
     const link =
         document.createElement(
             "a"
         );
 
-
-    link.href = url;
+    link.href =
+        url;
 
     link.download =
         filename;
-
 
     document.body.appendChild(
         link
@@ -2571,24 +3596,25 @@ function downloadCSV(
 }
 
 
+/* =====================================================
+   THEME
+===================================================== */
+
 function toggleTheme() {
 
     document.body.classList.toggle(
         "light"
     );
 
-
     const light =
         document.body.classList.contains(
             "light"
         );
 
-
     const button =
         document.getElementById(
             "themeButton"
         );
-
 
     if (button) {
 
@@ -2598,7 +3624,6 @@ function toggleTheme() {
                 : "☀️";
     }
 
-
     localStorage.setItem(
         "vehiclecare-theme",
         light
@@ -2606,12 +3631,10 @@ function toggleTheme() {
             : "dark"
     );
 
-
     const reports =
         document.getElementById(
             "reports"
         );
-
 
     if (
         reports &&
@@ -2632,22 +3655,18 @@ function loadTheme() {
             "vehiclecare-theme"
         );
 
-
     const light =
         saved === "light";
-
 
     document.body.classList.toggle(
         "light",
         light
     );
 
-
     const button =
         document.getElementById(
             "themeButton"
         );
-
 
     if (button) {
 
@@ -2659,6 +3678,10 @@ function loadTheme() {
 }
 
 
+/* =====================================================
+   TOAST
+===================================================== */
+
 function showToast(
     message,
     error = false
@@ -2669,31 +3692,25 @@ function showToast(
             "toast"
         );
 
-
     if (!toast) {
         return;
     }
 
-
     toast.textContent =
         message;
-
 
     toast.classList.toggle(
         "error",
         error
     );
 
-
     toast.classList.add(
         "show"
     );
 
-
     clearTimeout(
         window.toastTimer
     );
-
 
     window.toastTimer =
         setTimeout(
@@ -2709,8 +3726,13 @@ function showToast(
 }
 
 
+/* =====================================================
+   START APPLICATION
+===================================================== */
+
 document.addEventListener(
     "DOMContentLoaded",
+
     async () => {
 
         loadTheme();
@@ -2728,7 +3750,23 @@ document.addEventListener(
             );
         }
 
-        if (!checkAuthentication()) {
+        const signupForm =
+            document.getElementById(
+                "signupForm"
+            );
+
+        if (signupForm) {
+
+            signupForm.addEventListener(
+                "submit",
+                handleSignup
+            );
+        }
+
+        if (
+            !checkAuthentication()
+        ) {
+
             return;
         }
 
@@ -2765,10 +3803,16 @@ document.addEventListener(
 
             await loadVehicles();
             await loadCustomers();
+            await loadServices();
             await loadAppointments();
             await loadInvoices();
 
-        } catch {
+        } catch (error) {
+
+            console.error(
+                "Application startup error:",
+                error
+            );
 
             logout(false);
         }
