@@ -229,3 +229,31 @@ Reports can include:
                     │       MongoDB        │
                     │  VehicleServiceDB    │
                     └──────────────────────┘
+
+
+
+
+# ▶️ How to Run the Project
+
+Follow the steps below to run VehicleCare on your local system.
+
+---
+
+## 1️⃣ Install the Required Software
+
+Make sure the following are installed:
+
+- Node.js
+- npm
+- MongoDB
+- MongoDB Shell
+- Visual Studio Code
+- Git
+
+Check the installations:
+
+```bash
+node --version
+npm --version
+mongosh --version
+git --version
