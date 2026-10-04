@@ -158,19 +158,81 @@ const customerSchema = new mongoose.Schema(
 const Customer = mongoose.model("Customer", customerSchema);
 
 
-// ---------------- SERVICE ----------------
+
+ // ---------------- SERVICE ----------------
 
 const serviceSchema = new mongoose.Schema(
     {
+        // Vehicle information
+        vehicleId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Vehicle"
+        },
+
+        vehicleNumber: {
+            type: String,
+            trim: true
+        },
+
+        // Service details
         serviceName: {
+            type: String,
+            trim: true
+        },
+
+        serviceType: {
+            type: String,
+            required: true,
+            trim: true
+        },
+
+        serviceDate: {
             type: String,
             required: true
         },
 
-        description: String,
+        technician: {
+            type: String,
+            default: ""
+        },
 
+        description: {
+            type: String,
+            default: ""
+        },
+
+        // Cost details
+        partsCost: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+
+        labourCost: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+
+        totalCost: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+
+        // Follow-up and status
+        nextServiceDate: {
+            type: String,
+            default: ""
+        },
+
+        status: {
+            type: String,
+            default: "Completed"
+        },
+
+        // Keep compatibility with older service records
         price: Number,
-
         duration: String
     },
     {
@@ -179,8 +241,6 @@ const serviceSchema = new mongoose.Schema(
 );
 
 const Service = mongoose.model("Service", serviceSchema);
-
-
 // ---------------- APPOINTMENT ----------------
 
 const appointmentSchema = new mongoose.Schema(
@@ -1129,37 +1189,96 @@ app.get(
 
 // ADD SERVICE
 
+
 app.post(
     "/api/services",
     authenticateToken,
     async (req, res) => {
-
         try {
+            const {
+                vehicleId,
+                vehicleNumber,
+                serviceDate,
+                serviceType,
+                serviceName,
+                technician,
+                description,
+                partsCost,
+                labourCost,
+                totalCost,
+                nextServiceDate,
+                status
+            } = req.body;
 
-            const service =
-                new Service(req.body);
+            // Validate required fields
+            const finalServiceType =
+                serviceType || serviceName;
+
+            if (!finalServiceType || !serviceDate) {
+                return res.status(400).json({
+                    message:
+                        "Service type and service date are required."
+                });
+            }
+
+            // Validate vehicle ID when supplied
+            if (
+                vehicleId &&
+                !mongoose.Types.ObjectId.isValid(vehicleId)
+            ) {
+                return res.status(400).json({
+                    message: "Invalid vehicle ID."
+                });
+            }
+
+            const parsedPartsCost = Number(partsCost ?? 0);
+            const parsedLabourCost = Number(labourCost ?? 0);
+
+            if (
+                !Number.isFinite(parsedPartsCost) ||
+                !Number.isFinite(parsedLabourCost) ||
+                parsedPartsCost < 0 ||
+                parsedLabourCost < 0
+            ) {
+                return res.status(400).json({
+                    message: "Please provide valid service costs."
+                });
+            }
+
+            const service = new Service({
+                vehicleId: vehicleId || undefined,
+                vehicleNumber: vehicleNumber || "",
+                serviceName: serviceName || finalServiceType,
+                serviceType: finalServiceType,
+                serviceDate,
+                technician: technician || "",
+                description: description || "",
+                partsCost: parsedPartsCost,
+                labourCost: parsedLabourCost,
+                totalCost:
+                    totalCost !== undefined
+                        ? Number(totalCost)
+                        : parsedPartsCost + parsedLabourCost,
+                nextServiceDate: nextServiceDate || "",
+                status: status || "Completed"
+            });
 
             await service.save();
 
-            res.status(201).json(service);
-
-        }
-
-        catch (error) {
-
-            res.status(500).json({
-
-                message:
-                    "Failed to add service"
-
+            return res.status(201).json({
+                message: "Service added successfully.",
+                service
             });
+        } catch (error) {
+            console.error("Add service error:", error);
 
+            return res.status(500).json({
+                message: "Failed to add service.",
+                error: error.message
+            });
         }
-
     }
 );
-
-
 // DELETE SERVICE
 
 app.delete(

@@ -1668,266 +1668,111 @@ async function loadServices() {
 }
 
 
-function displayServices(data) {
 
-    const container =
-        document.getElementById(
-            "serviceList"
+function displayServices(data) {
+    const container = document.getElementById("serviceList");
+    if (!container) return;
+
+    if (!data || data.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center;">
+                    No services found.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    const formatCost = (value) =>
+        `₹${Number(value ?? 0).toLocaleString("en-IN")}`;
+
+    container.innerHTML = data.map(service => {
+        const parts = Number(service.partsCost ?? 0);
+        const labour = Number(service.labourCost ?? 0);
+        const total = Number(
+            service.totalCost ?? service.cost ?? (parts + labour)
         );
 
-    if (!container) {
-        return;
-    }
-
-    if (
-        !data ||
-        data.length === 0
-    ) {
-
-        container.innerHTML = `
-            <div class="panel">
-                No services found.
-            </div>
+        return `
+            <tr>
+                <td>${service.serviceDate || "-"}</td>
+                <td>${service.vehicleNumber || "-"}</td>
+                <td>
+                    <strong>${service.serviceType || "-"}</strong>
+                    <br>
+                    <small>${service.description || ""}</small>
+                </td>
+                <td>${service.technician || "-"}</td>
+                <td>${formatCost(parts)}</td>
+                <td>${formatCost(labour)}</td>
+                <td><strong>${formatCost(total)}</strong></td>
+            </tr>
         `;
-
-        return;
-    }
-
-    container.innerHTML =
-        data
-            .map(
-                service => `
-
-                <div class="service-card">
-
-                    <h3>
-                        ${
-                            service.serviceType ||
-                            "-"
-                        }
-                    </h3>
-
-                    <p>
-                        🚗 ${
-                            service.vehicleNumber ||
-                            "-"
-                        }
-                    </p>
-
-                    <p>
-                        ${
-                            service.description ||
-                            "-"
-                        }
-                    </p>
-
-                    <p>
-                        ₹${Number(
-                            service.totalCost ??
-                            service.cost ??
-                            0
-                        ).toLocaleString(
-                            "en-IN"
-                        )}
-                    </p>
-
-                    <span class="status-badge">
-                        ${
-                            service.status ||
-                            "Pending"
-                        }
-                    </span>
-
-                </div>
-
-            `
-            )
-            .join("");
+    }).join("");
 }
 
 
-async function addService() {
+/* =====================================================
+   ADD SERVICE
+===================================================== */
 
-    const vehicleElement =
-        document.getElementById(
-            "serviceVehicle"
-        );
 
-    const vehicleId =
-        vehicleElement
-            ? vehicleElement.value
-            : "";
-
-    if (!vehicleId) {
-
-        showToast(
-            "Please select a vehicle",
-            true
-        );
-
-        return;
-    }
-
-    const vehicle =
-        vehicles.find(
-            item =>
-                item._id === vehicleId
-        );
-
-    if (!vehicle) {
-
-        showToast(
-            "Selected vehicle not found",
-            true
-        );
-
-        return;
-    }
-
-    const partsCost =
-        Number(
-            document.getElementById(
-                "partsCost"
-            )?.value || 0
-        );
-
-    const labourCost =
-        Number(
-            document.getElementById(
-                "labourCost"
-            )?.value || 0
-        );
+async function addVehicle() {
+    const getValue = (id) =>
+        document.getElementById(id)?.value?.trim() || "";
 
     const data = {
-
-        vehicleId,
-
-        vehicleNumber:
-            vehicle.vehicleNumber,
-
-        serviceDate:
-            document.getElementById(
-                "serviceDate"
-            )?.value || "",
-
-        serviceType:
-            document.getElementById(
-                "serviceType"
-            )?.value || "",
-
-        description:
-            document.getElementById(
-                "serviceDescription"
-            )?.value.trim() || "",
-
-        technician:
-            document.getElementById(
-                "technician"
-            )?.value.trim() || "",
-
-        partsCost,
-
-        labourCost,
-
-        totalCost:
-            partsCost +
-            labourCost,
-
-        nextServiceDate:
-            document.getElementById(
-                "nextService"
-            )?.value || ""
+        vehicleNumber: getValue("vehicleNumber"),
+        ownerName: getValue("ownerName"),
+        model: getValue("vehicleModel"),
+        type: getValue("vehicleType"),
+        phone: getValue("vehiclePhone"),
+        lastServiceDate: getValue("lastServiceDate"),
+        nextServiceDate: getValue("nextServiceDate"),
+        serviceCost: Number(getValue("serviceCost") || 0)
     };
 
+    if (!data.vehicleNumber || !data.ownerName) {
+        showToast("Vehicle number and owner name are required.", true);
+        return;
+    }
+
+    if (!Number.isFinite(data.serviceCost) || data.serviceCost < 0) {
+        showToast("Please enter a valid service cost.", true);
+        return;
+    }
+
     try {
+        const response = await apiFetch(`${API}/vehicles`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        });
 
-        const response =
-            await apiFetch(
-                `${API}/services`,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify(data)
-                }
-            );
-
-        const result =
-            await response
-                .json()
-                .catch(() => ({}));
+        const result = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-
             throw new Error(
-                result.message ||
-                "Failed to add service"
+                result.message || result.error || "Failed to save vehicle."
             );
         }
 
-        [
-            "serviceDate",
-            "technician",
-            "partsCost",
-            "labourCost",
-            "nextService",
-            "serviceDescription"
-        ].forEach(
-            id => {
-
-                const element =
-                    document.getElementById(
-                        id
-                    );
-
-                if (element) {
-                    element.value = "";
-                }
-            }
-        );
-
-        if (vehicleElement) {
-            vehicleElement.value = "";
-        }
-
-        const serviceType =
-            document.getElementById(
-                "serviceType"
-            );
-
-        if (serviceType) {
-            serviceType.value = "";
-        }
-
-        await loadServices();
         await loadVehicles();
         await loadDashboard();
 
-        showToast(
-            "Service added successfully"
-        );
+        clearVehicleForm();
+        hideVehicleForm();
+
+        showToast("Vehicle saved successfully!");
 
     } catch (error) {
-
-        console.error(
-            "Add service error:",
-            error
-        );
-
-        showToast(
-            error.message ||
-            "Failed to add service",
-            true
-        );
+        console.error("Save vehicle error:", error);
+        showToast(error.message || "Failed to save vehicle.", true);
     }
 }
-
-
 /* =====================================================
    CUSTOMERS
 ===================================================== */
@@ -3818,3 +3663,37 @@ document.addEventListener(
         }
     }
 );
+
+async function deleteVehicle(id) {
+    if (!id) {
+        showToast("Vehicle ID is missing.", true);
+        return;
+    }
+
+    if (!confirm("Are you sure you want to delete this vehicle?")) {
+        return;
+    }
+
+    try {
+        const response = await apiFetch(
+            `${API}/vehicles/${id}`,
+            { method: "DELETE" }
+        );
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(
+                result.message || result.error || "Delete failed"
+            );
+        }
+
+        showToast("Vehicle deleted successfully!");
+        await loadVehicles();
+        await loadDashboard();
+
+    } catch (error) {
+        console.error("Delete vehicle error:", error);
+        showToast(error.message || "Failed to delete vehicle.", true);
+    }
+}

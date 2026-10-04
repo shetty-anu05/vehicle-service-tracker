@@ -2413,3 +2413,101 @@ body.light footer {
     font-size: 30px !important;
     font-weight: 800 !important;
 }
+
+/* ===== VEHICLECARE SERVICE CARD LAYOUT ===== */
+
+.service-card {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 20px;
+    padding: 24px;
+    margin-bottom: 18px;
+    background: linear-gradient(
+        145deg,
+        rgba(17, 27, 45, 0.94),
+        rgba(11, 18, 32, 0.96)
+    );
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-small);
+}
+
+.service-card h3 {
+    grid-column: 1 / 3;
+    margin: 0;
+    font-size: 18px;
+    color: var(--text);
+}
+
+.service-card .status-badge {
+    justify-self: end;
+    align-self: start;
+}
+
+.service-card p {
+    min-width: 0;
+    margin: 0;
+    padding: 12px;
+    overflow-wrap: anywhere;
+    color: var(--text-soft);
+    font-size: 13px;
+    line-height: 1.6;
+    background: rgba(148, 163, 184, 0.045);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.service-card p:last-of-type {
+    color: #93c5fd;
+    font-weight: 700;
+}
+
+body.light .service-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+}
+
+body.light .service-card p {
+    color: #334155;
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+@media (max-width: 700px) {
+    .service-card {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 17px;
+        gap: 10px;
+    }
+
+    .service-card h3 {
+        grid-column: 1 / 2;
+    }
+}
+
+@media (max-width: 420px) {
+    .service-card {
+        grid-template-columns: 1fr;
+    }
+
+    .service-card h3 {
+        grid-column: auto;
+    }
+
+    .service-card .status-badge {
+        justify-self: start;
+    }
+}
+
+#vehicleForm button[onclick="addVehicle()"],
+#vehicleForm button[type="submit"] {
+    background-color: #2563eb;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+}
+
+#vehicleForm button[onclick="addVehicle()"]:hover,
+#vehicleForm button[type="submit"]:hover {
+    background-color: #1d4ed8;
+}
