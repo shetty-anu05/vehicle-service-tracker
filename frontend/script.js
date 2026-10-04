@@ -1718,33 +1718,49 @@ function displayServices(data) {
 ===================================================== */
 
 
-async function addVehicle() {
+
+
+
+async function addService() {
     const getValue = (id) =>
         document.getElementById(id)?.value?.trim() || "";
 
+    const vehicleId = getValue("serviceVehicle");
+
     const data = {
-        vehicleNumber: getValue("vehicleNumber"),
-        ownerName: getValue("ownerName"),
-        model: getValue("vehicleModel"),
-        type: getValue("vehicleType"),
-        phone: getValue("vehiclePhone"),
-        lastServiceDate: getValue("lastServiceDate"),
-        nextServiceDate: getValue("nextServiceDate"),
-        serviceCost: Number(getValue("serviceCost") || 0)
+        vehicleId: vehicleId,
+        serviceDate: getValue("serviceDate"),
+        serviceType: getValue("serviceType"),
+        description: getValue("serviceDescription"),
+        technician: getValue("serviceTechnician"),
+        partsCost: Number(getValue("partsCost") || 0),
+        labourCost: Number(getValue("labourCost") || 0)
     };
 
-    if (!data.vehicleNumber || !data.ownerName) {
-        showToast("Vehicle number and owner name are required.", true);
+    data.totalCost = data.partsCost + data.labourCost;
+
+    if (!data.vehicleId) {
+        showToast("Please select a vehicle.", true);
         return;
     }
 
-    if (!Number.isFinite(data.serviceCost) || data.serviceCost < 0) {
-        showToast("Please enter a valid service cost.", true);
+    if (!data.serviceDate || !data.serviceType) {
+        showToast("Please enter the service date and type.", true);
+        return;
+    }
+
+    if (
+        !Number.isFinite(data.partsCost) ||
+        !Number.isFinite(data.labourCost) ||
+        data.partsCost < 0 ||
+        data.labourCost < 0
+    ) {
+        showToast("Please enter valid service costs.", true);
         return;
     }
 
     try {
-        const response = await apiFetch(`${API}/vehicles`, {
+        const response = await apiFetch(`${API}/services`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -1756,23 +1772,24 @@ async function addVehicle() {
 
         if (!response.ok) {
             throw new Error(
-                result.message || result.error || "Failed to save vehicle."
+                result.message ||
+                result.error ||
+                "Failed to save service."
             );
         }
 
-        await loadVehicles();
+        await loadServices();
         await loadDashboard();
 
-        clearVehicleForm();
-        hideVehicleForm();
-
-        showToast("Vehicle saved successfully!");
+        showToast("Service saved successfully!");
 
     } catch (error) {
-        console.error("Save vehicle error:", error);
-        showToast(error.message || "Failed to save vehicle.", true);
+        console.error("Add service error:", error);
+        showToast(error.message || "Failed to save service.", true);
     }
 }
+
+
 /* =====================================================
    CUSTOMERS
 ===================================================== */
